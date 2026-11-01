@@ -27,6 +27,14 @@ function plural(n, one, few, many) {
 }
 const dn = (n) => n + ' ' + plural(n, 'день', 'дня', 'дней');
 const g = (c, m, f) => (c.g === 'f' ? f : m);
+// обращение к игроку по выбранному полу: {Х}/{х} хозяин(ка), {Г}/{г} господин/госпожа, {пг:муж|жен}
+const playerFem = () => typeof S !== 'undefined' && S && S.playerG === 'f';
+function addr(s) {
+  if (!s || s.indexOf('{') < 0) return s;
+  const f = playerFem();
+  return s.replace(/\{([ХхГг])\}/g, (_, k) => ({ Х: f ? 'Хозяйка' : 'Хозяин', х: f ? 'хозяйка' : 'хозяин', Г: f ? 'Госпожа' : 'Господин', г: f ? 'госпожа' : 'господин' })[k])
+    .replace(/\{пг:([^|}]*)\|([^}]*)\}/g, (_, m, w) => (f ? w : m));
+}
 const esc = (s) => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 const fn1 = (c) => c.name.split(' ')[0];
 function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
@@ -61,11 +69,22 @@ function gearBonText(it, raw) {
     return (lbl.startsWith('%') || lbl.startsWith(' ')) ? `+${n}${lbl}` : `${lbl} +${n}`;
   }).join(', ');
 }
-function gearName(it) { return gearDef(it).name + (it.q > 0 ? ' · ' + GEAR_Q[it.q].name : ''); }
+function gearName(it, c) { const d = gearDef(it); return (c && c.g === 'm' && d.nameM ? d.nameM : d.name) + (it.q > 0 ? ' · ' + GEAR_Q[it.q].name : ''); }
+const gearFem = (it) => !!(gearDef(it) || {}).fem;
+// Будет ли вещь видна на портрете этого персонажа (для подсказки при выборе)
+function gearShows(c, it) {
+  const p = presetById(c.preset), cur = artKeyFor(c, p);
+  const t = { preset: c.preset, outfit: c.outfit, acc: (c.acc || []).slice() };
+  if (it.kind === 'outfit') t.outfit = it.base;
+  else { if (gearSlot(it) !== 'legs') return !!(ACCESSORIES[it.base] || {}).ov; t.acc = t.acc.filter(a => !ACCESSORIES[a.id] || ACCESSORIES[a.id].slot !== 'legs').concat([{ id: it.base }]); }
+  const k = artKeyFor(t, p);
+  return k !== p.id && (k !== cur || (it.kind === 'outfit' && c.outfit === it.base));
+}
 function gearVal(it) { return Math.round(gearDef(it).val * GEAR_Q[it.q].val * (0.45 + 0.55 * it.dur / it.maxDur)); }
 function repairCost(it) { return it.dur >= it.maxDur ? 0 : Math.round(gearDef(it).val * GEAR_Q[it.q].val * 0.35 * (1 - it.dur / it.maxDur)) + 5; }
 function gearIcon(it) {
   if (it.kind === 'outfit') return `<span class="g-ico g-outfit" style="--c:${it.color}"><svg viewBox="0 0 24 24"><path d="M8 3 L4 6 L6 10 L8 9 V21 H16 V9 L18 10 L20 6 L16 3 C15 5 9 5 8 3Z" fill="currentColor" stroke="#3b2616" stroke-width="1.4" stroke-linejoin="round"/></svg></span>`;
+  if (gearSlot(it) === 'legs') return `<span class="g-ico g-outfit" style="--c:${it.color}"><svg viewBox="0 0 24 24"><path d="M7 2 H12 V14 L15 19 C16 21 14 23 12 22 L8 19 C7 18 7 17 7 16Z M14 2 H18 V13 L20 17 C21 19 19 21 17 20 L15 18" fill="currentColor" stroke="#3b2616" stroke-width="1.3" stroke-linejoin="round"/><path d="M7 5 H12 M14 5 H18" stroke="#3b2616" stroke-width="1.2"/></svg></span>`;
   return `<span class="g-ico"><img src="${PORTRAIT_CFG.accDir}${it.base}.png" alt=""></span>`;
 }
 // Сумма бонусов надетого
@@ -97,16 +116,19 @@ function rollRarity(bonus = 0) {
 function rollOrientation() { const x = R(); return x < 0.80 ? 'hetero' : x < 0.95 ? 'bi' : 'homo'; }
 function rollGear(presetId, rarity) {
   const n = R() < 0.15 ? 0 : R() < 0.6 ? 1 : R() < 0.85 ? 2 : 3;
-  const used = new Set(), out = [];
+  const used = new Set(), out = [], fem = (presetById(presetId) || {}).g === 'f';
   for (const id of shuffle(Object.keys(ACCESSORIES))) {
     if (out.length >= n) break;
     const slot = ACCESSORIES[id].slot; if (used.has(slot)) continue;
+    if (ACCESSORIES[id].fem && (!fem || R() < 0.6)) continue;
     used.add(slot); out.push(makeGear('acc', id, rollQ(rarity * 0.04)));
   }
-  const arts = OUTFIT_ART[presetId];
+  const all = (OUTFIT_ART[presetId] || []).filter(o => OUTFITS[o] && (fem || !OUTFITS[o].fem));
+  const classic = all.filter(o => OUTFITS_CLASSIC.includes(o)), extra = all.filter(o => !OUTFITS_CLASSIC.includes(o));
+  const arts = (extra.length && (!classic.length || R() < 0.15)) ? extra : classic.length ? classic : null;
   const r = R();
   if (arts && r < 0.8) out.push(makeGear('outfit', pick(arts), rollQ(rarity * 0.04)));
-  else if (!arts && r < 0.45) out.push(makeGear('outfit', pick(Object.keys(OUTFITS)), rollQ(rarity * 0.04)));
+  else if (!arts && r < 0.45) out.push(makeGear('outfit', pick(OUTFITS_CLASSIC), rollQ(rarity * 0.04)));
   // небольшой износ у товара с рынка
   for (const it of out) it.dur = Math.max(1, it.maxDur - rint(0, Math.round(it.maxDur * 0.4)));
   return out;
@@ -382,9 +404,13 @@ function refreshMarket() {
 }
 function rollGearShop() {
   S.gearShop = [];
-  const ids = shuffle(Object.keys(ACCESSORIES)).slice(0, 4);
-  for (const id of ids) S.gearShop.push(makeGear('acc', id, rollQ(0.05 + rankIdx() * 0.03)));
-  S.gearShop.push(makeGear('outfit', pick(Object.keys(OUTFITS)), rollQ(0.05 + rankIdx() * 0.03)));
+  const qb = 0.05 + rankIdx() * 0.03;
+  const ids = shuffle(Object.keys(ACCESSORIES).filter(id => ACCESSORIES[id].slot !== 'legs')).slice(0, 4);
+  for (const id of ids) S.gearShop.push(makeGear('acc', id, rollQ(qb)));
+  S.gearShop.push(makeGear('acc', pick(Object.keys(ACCESSORIES).filter(id => ACCESSORIES[id].slot === 'legs')), rollQ(qb)));
+  // два наряда: один из новых (купальник, кружево, платье, корсет, сорочка), один классический
+  S.gearShop.push(makeGear('outfit', pick(Object.keys(OUTFITS).filter(o => !OUTFITS_CLASSIC.includes(o))), rollQ(qb)));
+  S.gearShop.push(makeGear('outfit', pick(OUTFITS_CLASSIC), rollQ(qb)));
 }
 function topUpOrders() {
   S.orders = S.orders.filter(o => o.assigned || o.expires >= S.day);
@@ -477,7 +503,7 @@ function act(uid, kind) {
       const base = (c.goodDeed ? 5 : 2) * (m >= 50 ? 1 : 0.6);
       const v = loyaltyGain(c, base); c.moodMod += 6; c.stress = clamp(c.stress - 3);
       msg = c.goodDeed ? `${fn1(c)} сияет: похвала заслуженная. Лояльность +${v}.` : `${fn1(c)} улыбается. Лояльность +${v}${m < 50 ? ' (в плохом настроении похвала действует слабее)' : ''}.`;
-      react(c, 'smile', c.goodDeed ? 'Спасибо! Я старал' + g(c, 'ся', 'ась') + '!' : 'Приятно слышать!');
+      react(c, 'smile', gx(c, c.goodDeed ? 'Спасибо, {х}! Я так старал{ся|ась}!' : toneOf(c) === 'sullen' ? '*кланяется* Благодарю, {х}.' : 'Благодарю, {х}! Я буду стараться ещё больше.'));
       c.goodDeed = false; sfx('sparkle');
       break;
     }
@@ -487,7 +513,7 @@ function act(uid, kind) {
       S.gold -= 60; c.giftDay = S.day;
       const v = loyaltyGain(c, c.loyalty < 30 ? 8 : 6); c.moodMod += 15;
       msg = `Подарок пришёлся по душе. Лояльность +${v}, настроение +15.`;
-      react(c, 'blush', 'Это… мне? Спасибо!'); sfx('coin');
+      react(c, 'blush', gx(c, toneOf(c) === 'sullen' ? '*удивлённо поднимает глаза* Это мне, {х}?.. Спасибо.' : 'Это… мне, {х}? Спасибо! Я не подведу.')); sfx('coin');
       break;
     }
     case 'scold': {
@@ -500,7 +526,7 @@ function act(uid, kind) {
       if (c.loyalty >= 70 && c.misdeed) l += 1;
       c.discipline = clamp(c.discipline + d); const st = stressGain(c, 10); loyaltyGain(c, l);
       msg = c.misdeed ? `Выговор по делу. Дисциплина +${d}, стресс +${st}.` : `Выговор без повода: дисциплина +${d}, но лояльность ${l}. Обидно.`;
-      react(c, 'back', c.misdeed ? g(c, 'Понял', 'Поняла') + ', исправлюсь…' : 'За что?..'); sfx('bad');
+      react(c, 'back', gx(c, c.misdeed ? '{Понял|Поняла}, {х}. Простите, я исправлюсь…' : '*опускает голову* Простите, {х}… я не понимаю, в чём провинил{ся|ась}.')); sfx('bad');
       resolveFault(c);
       break;
     }
@@ -511,7 +537,7 @@ function act(uid, kind) {
       const l = c.misdeed ? -1 : -5;
       c.discipline = clamp(c.discipline + d); c.moodMod -= has(c, 'gourmet') ? 25 : 12; loyaltyGain(c, l);
       msg = `Без десерта на ужин. Дисциплина +${d}, настроение снизилось, лояльность ${l}.`;
-      react(c, 'frown', 'Ну и ладно…'); sfx('bad');
+      react(c, 'frown', gx(c, '*вздыхает* Как скажете, {х}…')); sfx('bad');
       resolveFault(c);
       break;
     }
@@ -521,7 +547,7 @@ function act(uid, kind) {
       const wasSick = c.sickDays > 0;
       S.gold -= HEALER_COST; c.health = clamp(c.health + 40); c.sickDays = 0;
       msg = `Лекарь осмотрел ${fn1(c)}: здоровье +40${wasSick ? ', хворь прошла' : ''}.`;
-      react(c, 'smile', 'Уже лучше, спасибо!'); sfx('coin');
+      react(c, 'smile', gx(c, 'Мне уже лучше. Спасибо, {х}!')); sfx('coin');
       break;
     }
   }
@@ -530,10 +556,10 @@ function act(uid, kind) {
 
 // Погладить по голове: приятно, если есть доверие. С каждым разом за день эффект слабее.
 const PET_LINES = {
-  beast: ['Мр-р-р…', 'Мрр… ещё, пожалуйста…', 'Мур-р… вот тут, за ушком…', '*довольно жмурится*'],
-  other: ['М-м… как спокойно…', 'Ой… приятно.', 'Хм-м… мр…', '*прикрывает глаза*'],
-  tired: ['Ну хватит, я же не котёнок…', 'Причёску совсем растреплете!', 'Хорошего понемножку.'],
-  shy: ['Н-не надо…', 'Я… лучше отойду.', 'Пожалуйста, не сейчас.'],
+  beast: ['Мр-р-р… спасибо, {х}…', 'Мрр… ещё, пожалуйста, {х}…', 'Мур-р… вот тут, за ушком, {х}…', '*довольно жмурится*'],
+  other: ['М-м… как спокойно, {х}…', 'Спасибо, {х}.', '*прикрывает глаза*'],
+  tired: ['Спасибо, {х}… на сегодня довольно, если позволите.', 'Причёска растреплется, {х}… но как скажете.'],
+  shy: ['*съёживается* Простите, {х}…', '…Да, {х}.', 'Как прикажете, {х}.'],
 };
 function setTask(uid, task) {
   const c = findOwned(uid); if (!c || c.status !== 'home') return;
@@ -569,11 +595,12 @@ function unequip(iid) {
 }
 function giveGear(iid, uid) {
   const f = findGear(iid), to = findOwned(uid); if (!f || !to) return;
+  if (gearFem(f.it) && to.g === 'm') { sfx('bad'); return toast('Это женская вещь — ' + fn1(to) + ' её не наденет.'); }
   if (f.c) { f.c.gear = f.c.gear.filter(x => x !== f.it); syncLook(f.c); } else S.stash = S.stash.filter(x => x !== f.it);
   const old = equip(to, f.it);
   closeModal();
-  toast(`${fn1(to)}: надет${f.it.kind === 'outfit' ? '' : 'о'} «${gearName(f.it)}»${old ? `, «${gearName(old)}» — в сундук` : ''}.`);
-  react(to, 'smile', 'Как мне идёт?'); sfx('sparkle');
+  toast(`${fn1(to)}: надет${f.it.kind === 'outfit' ? '' : 'о'} «${gearName(f.it, to)}»${old ? `, «${gearName(old, to)}» — в сундук` : ''}.${gearShows(to, f.it) || (f.it.kind === 'acc' && !gearSlot(f.it).match(/legs/)) ? '' : ' (на портрете не видно — только бонусы)'}`);
+  react(to, OUTFIT_SHY[f.it.base] ? 'blush' : 'smile', gx(to, pick(OUTFIT_SHY[f.it.base] ? OUTFIT_SHY_L : OUTFIT_OK_L)), 2600); sfx('sparkle');
   save(); render();
 }
 function repairGear(iid) {
@@ -594,7 +621,8 @@ function buyGear(iid) {
   const cost = Math.round(gearVal(it) * 1.3);
   if (S.gold < cost) { sfx('bad'); return toast('Не хватает монет.'); }
   S.gold -= cost; S.gearShop = S.gearShop.filter(x => x !== it); S.stash.push(it); sfx('buy');
-  toast(`Куплено: ${gearName(it)}. Лежит в сундуке (Сумка).`); save(); render();
+  toast(`Куплено: ${gearName(it)}. Лежит в сундуке — выберите, кому надеть.`); save(); render();
+  if (S.owned.length) setTimeout(() => gearToCharModal(it.iid), 250);
 }
 
 // ---------- предметы ----------
@@ -609,14 +637,14 @@ function useItem(id, uid) {
   let msg = '';
   const sweet = has(c, 'gourmet') || c.preg ? 2 : 1;
   switch (id) {
-    case 'gingerbread': c.moodMod += 15 * sweet; msg = 'Пряник съеден с явным удовольствием.'; react(c, 'smile', 'М-м, медовый!'); break;
-    case 'tea': c.stress = clamp(c.stress - 20); msg = 'Чай с мятой — стресс −20.'; react(c, 'smile', 'Сразу легче…'); break;
-    case 'tonic': c.fatigue = clamp(c.fatigue - 35); msg = 'Эликсир бодрости — усталость −35.'; react(c, 'surprised', 'Ух! Бодрит!'); break;
-    case 'salve': c.health = clamp(c.health + 30); c.sickDays = 0; msg = 'Целебная мазь: здоровье +30.'; react(c, 'smile', 'Уже не болит.'); break;
-    case 'pie': c.moodMod += 20 * (c.preg ? 1.5 : 1); c.stress = clamp(c.stress - 10); msg = 'Ягодный пирог — настроение +20, стресс −10.'; react(c, 'smile', 'Как у бабушки!'); break;
-    case 'book': c.stats[c.trainStat] = Math.min(c.pot[c.trainStat], c.stats[c.trainStat] + 3); msg = `Учебник: ${statName(c.trainStat)} +3 (до предела потенциала).`; react(c, 'neutral', 'Интересно…'); break;
-    case 'blanket': { const v = loyaltyGain(c, 10); c.moodMod += 10; msg = `Пуховое одеяло — лояльность +${v}.`; react(c, 'blush', 'Оно такое мягкое!'); break; }
-    case 'amulet': c.pot.luk = clamp(c.pot.luk + 4); c.stats.luk = Math.min(c.pot.luk, c.stats.luk + 2); msg = 'Амулет удачи: Удача +2, потенциал +4.'; react(c, 'smile', 'Чувствую, повезёт!'); break;
+    case 'gingerbread': c.moodMod += 15 * sweet; msg = 'Пряник съеден с явным удовольствием.'; react(c, 'smile', addr('М-м, медовый! Спасибо, {х}!')); break;
+    case 'tea': c.stress = clamp(c.stress - 20); msg = 'Чай с мятой — стресс −20.'; react(c, 'smile', addr('Сразу легче… спасибо, {х}.')); break;
+    case 'tonic': c.fatigue = clamp(c.fatigue - 35); msg = 'Эликсир бодрости — усталость −35.'; react(c, 'surprised', gx(c, 'Ух! Бодрит! Я готов{|а} работать, {х}!')); break;
+    case 'salve': c.health = clamp(c.health + 30); c.sickDays = 0; msg = 'Целебная мазь: здоровье +30.'; react(c, 'smile', addr('Уже не болит. Спасибо, {х}.')); break;
+    case 'pie': c.moodMod += 20 * (c.preg ? 1.5 : 1); c.stress = clamp(c.stress - 10); msg = 'Ягодный пирог — настроение +20, стресс −10.'; react(c, 'smile', addr('Как у бабушки! Спасибо, {х}!')); break;
+    case 'book': c.stats[c.trainStat] = Math.min(c.pot[c.trainStat], c.stats[c.trainStat] + 3); msg = `Учебник: ${statName(c.trainStat)} +3 (до предела потенциала).`; react(c, 'neutral', addr('Я всё выучу, {х}.')); break;
+    case 'blanket': { const v = loyaltyGain(c, 10); c.moodMod += 10; msg = `Пуховое одеяло — лояльность +${v}.`; react(c, 'blush', addr('Оно такое мягкое… Спасибо, {х}!')); break; }
+    case 'amulet': c.pot.luk = clamp(c.pot.luk + 4); c.stats.luk = Math.min(c.pot.luk, c.stats.luk + 2); msg = 'Амулет удачи: Удача +2, потенциал +4.'; react(c, 'smile', addr('Буду беречь его, {х}!')); break;
   }
   if (c.crave && (c.crave === id || id === 'pie')) { c.moodMod += 10; msg += ' Прихоть утолена!'; c.crave = null; }
   S.inv[id]--; if (!S.inv[id]) delete S.inv[id];
@@ -731,7 +759,7 @@ function makeHeir2(mother, father) {
   // одежда — от родителя, но другая, чем у него сейчас
   const arts = OUTFIT_ART[child.preset];
   const parentOutfit = (look.gear || []).find(i => i.kind === 'outfit');
-  const choices = (arts || []).filter(o => !parentOutfit || o !== parentOutfit.base);
+  const choices = (arts || []).filter(o => OUTFITS_CLASSIC.includes(o) && (!parentOutfit || o !== parentOutfit.base));
   if (choices.length) child.gear.push(makeGear('outfit', pick(choices), 0));
   child.gear.push(makeGear('acc', pick(['flower', 'bow', 'scarf', 'wreath']), 0));
   syncLook(child);
@@ -971,7 +999,7 @@ function reactNow(c, expr, line, ms) {
   try { Anim.setExpr(expr === 'neutral' ? null : expr, ms || 1800); } catch (e) { }
   el.className = el.className.replace(/expr-\w+/g, '').trim() + ' expr-' + expr;
   if (expr === 'back') el.classList.add('expr-frown');
-  if (bub && line) { bub.textContent = line; bub.classList.add('show'); }
+  if (bub && line) { bub.textContent = addr(line); bub.classList.add('show'); }
   clearTimeout(reactTimer);
   reactTimer = setTimeout(() => {
     el.className = el.className.replace(/expr-\w+/g, '').trim() + ' expr-neutral';
@@ -1153,7 +1181,7 @@ function gearHtml(c, owned) {
   const rows = c.gear.map(it => {
     const broken = it.dur <= 0;
     return `<div class="gear-row q${it.q} ${broken ? 'broken' : ''}">${gearIcon(it)}
-      <div class="gear-b"><div class="gear-n">${esc(gearName(it))} <small>${SLOT_NAMES[gearSlot(it)]}</small></div>
+      <div class="gear-b"><div class="gear-n">${esc(gearName(it, c))} <small>${SLOT_NAMES[gearSlot(it)]}</small></div>
         <div class="gear-bon">${broken ? '<span class="neg">Износилось — бонусов нет</span>' : esc(gearBonText(it))}</div>
         <div class="dur" title="Прочность ${it.dur}/${it.maxDur}"><i style="width:${it.dur / it.maxDur * 100}%"></i></div></div>
       ${owned ? `<div class="gear-a"><button class="btn tiny" data-unequip="${it.iid}">Снять</button><button class="btn tiny" data-givegear="${it.iid}">Передать</button>${repairCost(it) ? `<button class="btn tiny" data-repair="${it.iid}">Чинить ${repairCost(it)}</button>` : ''}</div>` : ''}
@@ -1298,7 +1326,7 @@ function viewTavern() {
     </div>`;
   }).join('');
   const shop = Object.entries(ITEMS).map(([id, it]) => `<div class="shop-i"><div><b>${it.name}</b>${S.inv[id] ? ` <small>(есть ${S.inv[id]})</small>` : ''}<div class="muted small">${it.desc}</div></div><button class="btn" data-buyitem="${id}"><span class="coin"></span>${it.price}</button></div>`).join('');
-  const gear = S.gearShop.map(it => `<div class="shop-i gear-row q${it.q}">${gearIcon(it)}<div class="gear-b"><b>${esc(gearName(it))}</b> <small>${SLOT_NAMES[gearSlot(it)]}</small><div class="muted small">${esc(gearBonText(it))} · прочность ${it.maxDur}</div></div><button class="btn" data-buygear="${it.iid}"><span class="coin"></span>${fmt(gearVal(it) * 1.3)}</button></div>`).join('');
+  const gear = S.gearShop.map(it => `<div class="shop-i gear-row q${it.q}">${gearIcon(it)}<div class="gear-b"><b>${esc(gearName(it))}</b> <small>${SLOT_NAMES[gearSlot(it)]}${gearFem(it) ? ' · для девушек' : ''}</small><div class="muted small">${esc(gearBonText(it))} · прочность ${it.maxDur}</div></div><button class="btn" data-buygear="${it.iid}"><span class="coin"></span>${fmt(gearVal(it) * 1.3)}</button></div>`).join('');
   const lim = debtLimit();
   return `<div class="screen-head"><h1>Таверна «Сытый Грифон»</h1><div class="sub">Доска заказов, слухи и лавки · ранг гильдии ${repRank()}: открыты заказы до ранга ${repRank()}</div></div>
     <div class="rumor parchment">${S.nextEv ? 'Трактирщица шепчет: «' + esc(MARKET_EVENTS[S.nextEv.id].rumor) + '»' : `Трактирщица шепчет: «Говорят, сейчас лучше всех платят за ${RACES[Object.entries(S.econ.race).sort((a, b) => b[1] - a[1])[0][0]].gen}».`}</div>
@@ -1402,17 +1430,19 @@ function charForItemModal(id) {
 function gearToCharModal(iid) {
   const f = findGear(iid); if (!f) return;
   const it = f.it, slot = gearSlot(it);
-  const list = S.owned.filter(c => c !== f.c).map(c => {
+  const list = S.owned.filter(c => c !== f.c && !(gearFem(it) && c.g === 'm')).map(c => {
     const cur = c.gear.find(x => gearSlot(x) === slot);
-    return `<div class="pick" data-gearto="${c.uid}" data-iid="${iid}"><div class="pick-p">${renderPortrait(c, 'sm')}</div><div><b>${esc(fn1(c))}</b><div class="small muted">${cur ? `сейчас: ${esc(gearName(cur))} — уйдёт в сундук` : `слот «${SLOT_NAMES[slot]}» свободен`}</div></div></div>`;
+    const vis = (it.kind === 'outfit' || slot === 'legs') ? (gearShows(c, it) ? ' · <span class="pos">видно на портрете</span>' : ' · только бонусы') : '';
+    return `<div class="pick" data-gearto="${c.uid}" data-iid="${iid}"><div class="pick-p">${renderPortrait(c, 'sm')}</div><div><b>${esc(fn1(c))}</b><div class="small muted">${cur ? `сейчас: ${esc(gearName(cur, c))} — уйдёт в сундук` : `слот «${SLOT_NAMES[slot]}» свободен`}${vis}</div></div></div>`;
   }).join('');
   showModal(esc(gearName(it)) + ': кому?', `<p class="small">${esc(gearBonText(it))} · прочность ${it.dur}/${it.maxDur}</p>${list || '<p class="muted">Больше некому.</p>'}`, [{ label: 'Закрыть', act: 'close' }]);
 }
 function stashToCharModal(uid) {
   const c = findOwned(uid);
-  showModal('Надеть из сундука', S.stash.map(it => {
+  showModal('Надеть из сундука', S.stash.filter(it => !(gearFem(it) && c.g === 'm')).map(it => {
     const cur = c.gear.find(x => gearSlot(x) === gearSlot(it));
-    return `<div class="pick gear-row q${it.q}" data-gearto="${uid}" data-iid="${it.iid}">${gearIcon(it)}<div><b>${esc(gearName(it))}</b> <small>${SLOT_NAMES[gearSlot(it)]}</small><div class="small muted">${esc(gearBonText(it))} · прочность ${it.dur}/${it.maxDur}${cur ? ` · заменит «${esc(gearName(cur))}»` : ''}</div></div></div>`;
+    const vis = (it.kind === 'outfit' || gearSlot(it) === 'legs') ? (gearShows(c, it) ? ' · <span class="pos">видно на портрете</span>' : ' · только бонусы') : '';
+    return `<div class="pick gear-row q${it.q}" data-gearto="${uid}" data-iid="${it.iid}">${gearIcon(it)}<div><b>${esc(gearName(it, c))}</b> <small>${SLOT_NAMES[gearSlot(it)]}</small><div class="small muted">${esc(gearBonText(it))} · прочность ${it.dur}/${it.maxDur}${cur ? ` · заменит «${esc(gearName(cur, c))}»` : ''}${vis}</div></div></div>`;
   }).join('') || '<p class="muted">Сундук пуст.</p>', [{ label: 'Закрыть', act: 'close' }]);
 }
 function confirmModal(title, text, label, fn) {
@@ -1425,6 +1455,7 @@ function menuModal() {
       <label class="set-row"><span>Музыка</span><input type="checkbox" id="set-music" ${st.music ? 'checked' : ''}></label>
       <label class="set-row"><span>Звуки</span><input type="checkbox" id="set-sfx" ${st.sfx ? 'checked' : ''}></label>
       <label class="set-row"><span>Громкость</span><input type="range" id="set-vol" min="0" max="100" value="${Math.round(st.vol * 100)}"></label>
+      <label class="set-row"><span>Обращаться ко мне</span><select id="set-pg"><option value="m" ${playerFem() ? '' : 'selected'}>хозяин, господин</option><option value="f" ${playerFem() ? 'selected' : ''}>хозяйка, госпожа</option></select></label>
       <label class="set-row"><span>Анимации</span><input type="checkbox" id="set-anim" ${Anim.enabled() ? 'checked' : ''}></label>
     </div>
     <p class="small">Игра сохраняется автоматически после каждого действия. Ручное сохранение — отдельный слот.</p>`,
@@ -1437,6 +1468,7 @@ function menuModal() {
   document.getElementById('set-music').addEventListener('change', e => Audio_.setMusic(e.target.checked));
   document.getElementById('set-sfx').addEventListener('change', e => Audio_.setSfx(e.target.checked));
   document.getElementById('set-vol').addEventListener('input', e => Audio_.setVol(e.target.value / 100));
+  document.getElementById('set-pg').addEventListener('change', e => { S.playerG = e.target.value; save(); toast('Слуги будут обращаться к вам: «' + addr('{х}') + '», «' + addr('{г}') + '».'); });
   document.getElementById('set-anim').addEventListener('change', e => { Anim.setEnabled(e.target.checked); FX.season(true); _lastScreen = null; render(); });
 }
 

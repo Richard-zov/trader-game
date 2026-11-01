@@ -166,12 +166,24 @@ function headOverlays(ch, meta) {
   }).join('');
 }
 
+// Какой арт показать: наряд всегда виден — если у персонажа нет арта именно этой вещи, берём ближайший похожий.
+// Чулки видны поверх белья или купального/кружевного комплекта (арт «_stock»).
+function artKeyFor(ch, p) {
+  p = p || presetById(ch.preset);
+  const arts = (typeof OUTFIT_ART !== 'undefined' && OUTFIT_ART[p.id]) || [];
+  const legs = (ch.acc || []).some(a => ACCESSORIES[a.id] && ACCESSORIES[a.id].slot === 'legs');
+  const o = ch.outfit;
+  if (legs && arts.includes('stock') && (!o || o === 'lace' || o === 'swim')) return p.id + '_stock';
+  if (!o) return p.id;
+  if (arts.includes(o)) return p.id + '_' + o;
+  for (const alt of (OUTFIT_NEAR[o] || [])) if (arts.includes(alt)) return p.id + '_' + alt;
+  return p.id;
+}
 // Возвращает HTML портрета. size: 'sm' (лицо крупно) | 'lg' (в полный рост на фоне)
 function renderPortrait(ch, size, extraClass) {
   const p = presetById(ch.preset);
   const parts = portraitSVG(p, ch.acc);
-  const hasOutfit = ch.outfit && OUTFIT_ART[p.id] && OUTFIT_ART[p.id].includes(ch.outfit);
-  const key = hasOutfit ? p.id + '_' + ch.outfit : p.id;
+  const key = artKeyFor(ch, p), hasOutfit = key !== p.id;
   const art = (hasOutfit ? PORTRAIT_CFG.outfitDir : PORTRAIT_CFG.artDir) + key + (size === 'sm' ? '_face' : '') + PORTRAIT_CFG.ext;
   const fh = figHeight(p);
   const onl = `onload="this.closest('.portrait').classList.add('has-art')" onerror="_missing.add(this.getAttribute('src'));this.remove()"`;

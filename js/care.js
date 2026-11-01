@@ -2,7 +2,7 @@
 // Подключается после game.js: использует его функции и состояние S.
 
 // ---------- общие помощники ----------
-const gx = (c, s) => s.replace(/\{([^|}]*)\|([^}]*)\}/g, (_, m, f) => g(c, m, f));
+const gx = (c, s) => addr(s).replace(/\{([^|}]*)\|([^}]*)\}/g, (_, m, f) => g(c, m, f));
 const pp = (v, d) => (v >= 0 ? '+' : '−') + Math.abs(v * 100).toFixed(d == null ? (Math.abs(v) < 0.1 ? 1 : 0) : d).replace(/\.0$/, '') + '%';
 function whyHtml(parts, totalTxt, note) {
   return `<details class="why"><summary>Почему так</summary><table>${parts.map(([l, v, h]) =>
@@ -121,7 +121,7 @@ const HELP = [
     <p>Примут ли прикосновение, зависит от <b>доверия</b> = лояльность×0.5 + симпатия×0.3 + настроение×0.2 (в течку +10). Хвост, щёки и уши — более личные зоны. Если доверия мало — персонаж отстранится (стресс +2).</p>
     <p>Эффект в течение дня слабеет: 100% → 60% → 35% → 15% → 0 для каждой зоны; после 8 прикосновений за день всё действует вдвое слабее.</p>`],
   ['close', 'Сблизиться', () => `<p>Провести вечер наедине с персонажем — только по его согласию и не чаще раза в день.</p><p>Нужно: <b>лояльность 55+, настроение 50+, симпатия 40+</b> (в течку −10/−10/−15). Если чего-то не хватает — персонаж мягко откажет, и ничего не случится.</p>
-    <p>Перед этим — шуточная мини-игра «кабачок в корзинку»: чем лучше настроение, тем шире горлышко и спокойнее корзинка. Очки умножают эффект (×0.5…×1.5): симпатия, лояльность и настроение растут, стресс снижается, усталость +5.</p>
+    <p>Перед этим — шуточная мини-игра «Кабачок и корзинка»: водите пальцем вверх-вниз, чтобы кабачок нырял в корзинку и выныривал; считаются ходы, глубина и ритм (сердечко-метроном). Чем лучше настроение и меньше стресс, тем шире горлышко и спокойнее качается корзинка. Очки умножают эффект (×0.5…×1.5): симпатия, лояльность и настроение растут, стресс снижается, усталость +5.</p>
     <p>Беременность возможна только у здоровых женщин, не в положении и если в поместье есть место (те же правила, что у свиданий; шанс по плодовитости, сезону и течке).</p>`],
   ['chances', 'Заказы, торг, свидания', () => `<p><b>Заказы:</b> 50% ± навыки против требований, Удача, усталость, настроение, стресс, здоровье, снаряжение (5–97%).</p><p><b>Торг:</b> чем больше просите, тем ниже шанс; помогают репутация и Обаяние лучшего торговца.</p><p><b>Свидания:</b> согласие — от взаимной симпатии, настроения и лояльности; беременность — от плодовитости, силы рода, здоровья, сезона и течки.</p><p>У каждого шанса есть разворот «Почему так» с разбором.</p>`],
 ];
@@ -197,55 +197,55 @@ function touchLeft(c, zone) { const t = touchState(c); return TOUCH_F[Math.min(t
 
 const TL = {
   head: {
-    hi: ['М-м-м… ещё. Я разрешаю.', 'Если так гладить каждый вечер — я стану совсем ручн{ым|ой}.', 'Осторожнее, хозяин. Я ведь могу и привыкнуть.', '*прикрывает глаза* Вот так… не останавливайтесь.', 'Вы гладите так, будто знаете, где у меня кнопка «растаять».'],
-    mid: ['Э-э… я же не котёнок. Но… минутку можно.', 'Причёску помнёте! …Хотя нет, продолжайте.', 'Вы всем так делаете? Просто интересно.'],
-    lo: ['Не надо, пожалуйста.', 'Я… лучше отойду.', 'Руки. Уберите.'] },
+    hi: ['М-м-м… спасибо, {х}.', 'Если вы будете так гладить каждый вечер, {х}, я стану совсем ручн{ым|ой}.', '*прикрывает глаза* Как вам угодно, {х}… мне очень хорошо.', 'Я ваш{|а}, {х}. Гладьте сколько пожелаете.', 'Вы знаете, где у меня кнопка «растаять», {х}.'],
+    mid: ['Ой… как скажете, {х}.', '*замирает* Спасибо, {х}…', 'Я… не привык{|ла} к ласке, {х}. Простите.'],
+    lo: ['*вздрагивает и опускает глаза* …Да, {х}.', '*застывает, не смея отстраниться*', 'Простите, {х}… я ещё боюсь.'] },
   ears: {
-    hi: ['Ах! Уши — это нечестно… *дрожит* …ещё.', 'Вы знаете, что за ушком у меня самое чуткое место? Теперь знаете.', 'Мр-р-р… колени подкашиваются, хозяин.', 'Ещё раз так сделаете — и я за себя не отвечаю.'],
-    mid: ['Уши! Ой… щекотно же!', 'Э-эй, это личное!', '*уши прижимаются, но лицо выдаёт с потрохами*'],
-    lo: ['Не трогайте уши!', '*отдёргивается* Не смейте.'] },
+    hi: ['Ах! Уши… простите, {х}, я дрожу.', 'За ушком — самое чуткое место, {х}. Теперь вы знаете.', 'Мр-р-р… колени подкашиваются, {х}.', 'Ещё, {х}… если позволите попросить.'],
+    mid: ['Ой, уши! Щекотно, {х}…', 'Простите, {х}, они сами дёргаются!', '*уши прижимаются, но лицо выдаёт с потрохами*'],
+    lo: ['*уши прижимаются* Простите, {х}… я боюсь.', '*сжимается и терпит*'] },
   tail: {
-    hi: ['Ах!.. Хвост — это очень лично. Но вам — можно.', 'Если вы так держите хвост, значит, у вас на меня планы. Угадала?', '*хвост сам обвивается вокруг вашего запястья* Он… сам. Честно.', 'Ещё… только медленно. Ох.'],
-    mid: ['Хвост?! Ну вы и нахал!', '*хвост вырывается из рук и тут же возвращается*', 'Так нельзя… наверное.'],
-    lo: ['Ещё раз — и укушу.', 'Хвост не трогать! Это правило номер один.'] },
+    hi: ['Ах!.. Хвост — это очень лично, {х}. Но вам — можно.', '*хвост сам обвивается вокруг вашего запястья* Простите, {х}, он сам…', 'Медленно… пожалуйста, {х}.'],
+    mid: ['Х-хвост? Как пожелаете, {х}…', '*хвост вырывается из рук и тут же виновато возвращается*', 'Простите, {х}, он непослушный.'],
+    lo: ['*хвост поджат* Пожалуйста, {х}… только не хвост.', '*замирает, хвост дрожит*'] },
   cheek: {
-    hi: ['Щёки горят… это вы виноваты.', 'Вы так смотрите, будто собираетесь трогать не только щёку.', 'Ой. Ещё секунда — и я сам{|а} вас поцелую.', '*прижимается щекой к ладони* Тёплая…'],
-    mid: ['Н-ну что вы…', 'У меня что-то на лице?', 'Вы меня смущаете. Специально, да?'],
-    lo: ['Держите дистанцию.', 'Не трогайте лицо.'] },
+    hi: ['Щёки горят, {х}… это из-за вас.', '*прижимается щекой к ладони* Тёплая… спасибо, {х}.', 'Можно… я поцелую вашу ладонь, {х}?'],
+    mid: ['Н-ну что вы, {х}…', 'У меня что-то на лице, {х}? Простите!', 'Вы меня смущаете, {х}…'],
+    lo: ['*отводит взгляд* Как прикажете, {х}.', '*не шевелится, только бледнеет*'] },
   hair: {
-    hi: ['Перебирайте ещё… мурашки до самых пяток.', 'Так волосы трогают перед поцелуем, вы знали?', 'М-м, вы же понимаете, что я теперь не усну?', '*тянется вслед за рукой*'],
-    mid: ['Причёска! Я её час укладывал{|а}!', 'Ладно, только аккуратно.'],
-    lo: ['Не трогайте волосы.', 'Прекратите.'] },
+    hi: ['Перебирайте ещё, {х}… мурашки до самых пяток.', 'М-м… я теперь не усну от счастья, {х}.', '*тянется вслед за рукой*'],
+    mid: ['Причёска… ничего, {х}, я переплету.', 'Как вам угодно, {х}. Только аккуратно, пожалуйста.'],
+    lo: ['*съёживается* Простите, {х}…', '…Да, {х}.'] },
   shoulder: {
-    hi: ['О-о… вот здесь. Вы волшебник.', 'Если вы так разминаете плечи — страшно представить, что ещё умеют ваши руки.', 'М-м… после такого и работать не страшно.', 'Ниже… нет, выше. Вот. Да-а.'],
-    mid: ['Плечи и правда затекли…', 'Спасибо, хозяин.', 'Ох, прямо в узелок попали.'],
-    lo: ['Я слушаю… только не так близко.', 'Что опять?'] },
+    hi: ['О-о… вот здесь, {х}. У вас волшебные руки.', 'После такого и работать не страшно, {х}. Спасибо.', 'Чуть ниже, если позволите, {х}… да-а.'],
+    mid: ['Плечи и правда затекли… спасибо, {х}.', 'Вы так добры, {х}.', 'Ох, прямо в узелок попали, {х}.'],
+    lo: ['*напрягается* Я слушаю, {х}.', 'Я что-то сделал{|а} не так, {х}?'] },
   back: {
-    hi: ['Ещё раз так проведёте вдоль спины — я выгнусь, как кошка.', 'М-м, между лопаток… вы знаете, где у меня мурашки.', 'Приятно, когда кто-то прикрывает спину. И гладит её.'],
-    mid: ['Ой! Ладно-ладно, иду работать.', 'Спасибо… наверное.', 'Хлопок по спине? Справлюсь, не волнуйтесь!'],
-    lo: ['Не толкайтесь.', 'Без рук, пожалуйста.'] },
+    hi: ['Между лопаток… вы знаете, где у меня мурашки, {х}.', 'Спасибо, что бережёте меня, {х}.', '*выгибается, как кошка* Простите, {х}… приятно.'],
+    mid: ['Ой! Уже бегу работать, {х}!', 'Спасибо, {х}… наверное, я заслужил{|а}.', 'Не волнуйтесь, {х}, я справлюсь!'],
+    lo: ['*вздрагивает* Иду, {х}, иду.', '*молча кланяется*'] },
   hand: {
-    hi: ['Ладонь у вас тёплая. Не отпускайте пока.', 'Вы держите меня за руку так, будто ведёте куда-то… Куда?', '*переплетает пальцы* Так лучше.', 'Если подержите ещё немного — я решу, что это свидание.'],
-    mid: ['Ой… рукопожатие? Ладно.', 'Договорились!', 'Руки у меня в муке, простите.'],
-    lo: ['Я сам{|а} справлюсь.', 'Не нужно.'] },
+    hi: ['Ладонь у вас тёплая, {х}. Можно я подержу ещё?', '*переплетает пальцы и тут же краснеет* Простите, {х}… можно?', 'Куда прикажете, {х}, — туда и пойду.'],
+    mid: ['Ой… руки у меня в муке, простите, {х}.', 'Как скажете, {х}.', '*осторожно сжимает ваши пальцы*'],
+    lo: ['*руки дрожат* …Да, {х}.', 'Простите, {х}, я не смею.'] },
 };
 const TL_TRAIT = {
-  charming: ['Нравится? Мне — очень. Можете не скрывать.', 'Я знаю, что хорош{|а}. Но слышать от ваших рук — приятнее.'],
-  stubborn: ['Ладно. Признаю. Это приятно. Довольны?', 'Только никому не говорите, что я разрешил{|а}.'],
-  sensitive: ['Только… будьте понежнее. Вот так.', 'У меня сердце сейчас выпрыгнет.'],
-  cheerful: ['Ха-ха! Щекотно! Ещё!', 'Ой, всё, я сейчас захихикаю на всю лавку!'],
-  lazy: ['Вот это я понимаю — работа… для вас. А я полежу.', 'Ещё полчасика так — и можно в кровать. С вами.'],
-  loyal: ['Ваши руки — единственные, которым я верю.', 'Я ваш{|а}. Вы ведь это знаете.'],
-  clever: ['Интересно, вы понимаете, какой эффект производите? Судя по улыбке — да.', 'Я посчитал{|а}: вы гладите уже третий раз за час. Не останавливайтесь.'],
-  diligent: ['Ну всё, теперь я разомлел{|а} и ничего не сделаю. Вы виноваты.'],
-  gourmet: ['Это почти так же хорошо, как медовый пряник. Почти.'],
+  charming: ['Вам нравится, {х}? Я так хотел{|а} вам понравиться.', 'Ласка ваших рук — лучшая награда, {х}.'],
+  stubborn: ['Признаю, {х}… это приятно. Только никому не говорите, ладно?', '*сдаётся и улыбается* Вы победили, {х}.'],
+  sensitive: ['Только понежнее, {х}… вот так.', 'У меня сердце сейчас выпрыгнет, {х}.'],
+  cheerful: ['Хи-хи! Щекотно, {х}! Простите!', 'Ой, я сейчас захихикаю на всю лавку, {х}!'],
+  lazy: ['Вот это служба, {х}, — лучшая на свете.', 'Ещё полчасика так, {х}, — и я усну у ваших ног.'],
+  loyal: ['Ваши руки — единственные, которым я верю, {х}.', 'Я ваш{|а}, {х}. Целиком.'],
+  clever: ['Я посчитал{|а}: вы гладите меня уже третий раз за час, {х}. Позвольте — пусть будет и четвёртый.', 'Вы же знаете, как на меня это действует, {х}…'],
+  diligent: ['Ой, я разомлел{|а}, {х}… но работу всё равно доделаю!'],
+  gourmet: ['Это почти так же хорошо, как медовый пряник, {х}. Почти.'],
 };
-const TL_HEAT = ['*жарко выдыхает* Не останавливайтесь… сегодня мне всего мало.', 'Простите… эти дни я сама не своя. Побудьте рядом подольше?', 'Вы пахнете так, что у меня кружится голова…', 'Мр-р… ещё. И ещё. Течка — ужасная штука. Прекрасная. Ужасная.', 'Если вы сейчас уйдёте, я пойду за вами. Предупреждаю.'];
-const TL_TIRED = ['Хорошего понемножку — приходите завтра.', 'Я уже растаял{|а}, больше не надо.', 'Ещё немного — и я весь день буду ходить с глупой улыбкой.'];
+const TL_HEAT = ['*жарко выдыхает* Не останавливайтесь, {х}… пожалуйста.', 'Простите, {х}… эти дни я сама не своя. Побудьте рядом?', 'От вас так пахнет, {х}… голова кружится.', 'Мр-р… простите, {х}, течка — ужасная штука.', 'Если вы уйдёте, {х}, я буду ждать у двери.'];
+const TL_TIRED = ['Спасибо, {х}… на сегодня мне уже довольно ласки.', 'Я уже растаял{|а}, {х}. Совсем.', 'Ещё немного — и я весь день буду ходить с глупой улыбкой, {х}.'];
 const TL_MARKET = {
-  hi: ['Ого, какой смелый покупатель. Мне нравится.', 'Купите — и сможете так каждый день.'],
-  mid: ['Руки! Сначала заплатите.', 'Это входит в цену?', 'Продавец смотрит, между прочим.'],
-  lo: ['Не трогайте товар, пока не купили.', '*отшатывается*'],
+  hi: ['*краснеет* Вы смелый покупатель, {г}…', 'Купите меня, {г}, — и сможете так каждый день.'],
+  mid: ['Простите, {г}… продавец смотрит.', '*робко отступает* Сначала договоритесь с продавцом, {г}.'],
+  lo: ['*отшатывается* Простите, {г}…', 'Пожалуйста, не надо, {г}.'],
 };
 const T_EXPR = {
   hi: { head: 'happy', ears: 'flushed', tail: 'flushed', cheek: 'shy', hair: 'happy', shoulder: 'sleepy', back: 'happy', hand: 'shy' },
@@ -340,14 +340,14 @@ function closeInfo(c) {
   return { ok: okReq && !why.length, okReq, reqs, why, heat: h };
 }
 const CLOSE_REFUSE = {
-  any: ['Не сегодня. Я… пока не готов{|а}.', 'Вы мне нравитесь, но давайте не спешить.', 'Может, сначала поухаживаете? Пряники, доброе слово, тёплые руки…'],
-  stubborn: ['Ещё чего. Сначала докажите, что вы того стоите.'],
-  sensitive: ['Простите… мне нужно больше времени. Не сердитесь, ладно?'],
-  charming: ['Ох, какие мы смелые. Поухаживайте ещё — тогда посмотрим.'],
-  loyal: ['Я вам верю. Но сердце — оно своё, ему нужно ещё чуть-чуть.'],
-  cheerful: ['Ха! Хорошая попытка. Но нет. Пока нет!'],
-  tired: ['Я еле на ногах стою… Давайте в другой раз.'],
-  sad: ['У меня совсем нет настроения. Простите.'],
+  any: ['Простите, {х}… я ещё не готов{|а}. Позвольте мне немного времени.', 'Вы мне нравитесь, {х}… но мне страшно. Простите.', 'Если позволите, {х}… может, сначала побудем рядом? Пряник, доброе слово…'],
+  stubborn: ['*упрямо смотрит в пол* Простите, {х}. Не сегодня. Я и сам{|а} не знаю почему.'],
+  sensitive: ['Простите… мне нужно больше времени, {х}. Не сердитесь, пожалуйста.'],
+  charming: ['*смущённо улыбается* Ещё чуть-чуть ухаживаний, {х}… если позволите.'],
+  loyal: ['Я вам верю, {х}. Но сердцу нужно ещё чуть-чуть. Простите.'],
+  cheerful: ['Ой, {х}! Давайте не сегодня? Простите-простите!'],
+  tired: ['Простите, {х}… я еле на ногах стою.'],
+  sad: ['Простите, {х}… у меня совсем нет сил улыбаться. Не сегодня.'],
 };
 function closenessModal(uid) {
   const c = findOwned(uid); if (!c) return;
@@ -357,33 +357,44 @@ function closenessModal(uid) {
     let pool = CLOSE_REFUSE.any.slice();
     for (const t of c.traits) if (CLOSE_REFUSE[t]) pool = CLOSE_REFUSE[t].concat(CLOSE_REFUSE[t], pool);
     if (c.fatigue >= 85) pool = CLOSE_REFUSE.tired; else if (mood(c) < 35) pool = CLOSE_REFUSE.sad;
-    const line = ci.why.includes('сегодня вы уже были вместе') ? 'Хозяин… ещё раз? Нет-нет, до завтра. Мне надо прийти в себя.' : pick(pool);
+    const line = ci.why.includes('сегодня вы уже были вместе') ? '{Х}… ещё раз? Простите, мне нужно прийти в себя до завтра.' : pick(pool);
     react(c, ci.why.length ? 'sleepy' : 'shy', gx(c, line), 3000);
     return showModal('Сблизиться', `<p class="quote">«${esc(gx(c, line))}»</p>${reqHtml}${ci.why.length ? `<p class="small">Сейчас нельзя: ${ci.why.join(', ')}.</p>` : `<p class="small">Ничего страшного — откажут мягко, без последствий. Поднимите недостающее: ласка и подарки — настроение и симпатию, похвала и забота — лояльность.</p>`}<p class="small"><a href="#" data-help="close">Как это работает</a></p>`, [{ label: 'Понятно', cls: 'btn-primary', act: 'close' }]);
   }
   showModal('Сблизиться', `<p>${esc(fn1(c))} ${gx(c, 'смущённо улыбается и не отводит глаз. Согласие есть.')}</p>${reqHtml}
-    <p class="small">Сначала — шуточная разминка: <b>засуньте кабачок в узкую корзинку</b>. Тяните кабачок пальцем и опускайте в горлышко. Чем лучше настроение, тем шире горлышко и тише корзинка. Очки усилят эффект вечера.</p>`,
+    <p class="small">Сначала — шуточная разминка «Кабачок и корзинка»: водите пальцем вверх-вниз, чтобы кабачок нырял в горлышко нарядной корзинки с медальоном, на котором — ${esc(fn1(c))}, и выныривал обратно. Чем больше ходов, глубже и ритмичнее — тем больше очков. Чем лучше настроение и меньше стресс, тем шире горлышко и спокойнее качается корзинка. Очки усилят эффект вечера.</p>`,
     [{ label: 'Не сейчас', act: 'close' }, { label: 'Начать', cls: 'btn-primary', act: () => zucchiniGame(uid) }]);
 }
 
-// мини-игра: кабачок в корзинку
+// мини-игра: кабачок и корзинка — ритм и глубина
 let _zg = null;
+function zgFace(c, cb) {
+  const p = presetById(c.preset); if (!p) return cb(null);
+  const key = artKeyFor(c, p), dir = key !== p.id ? PORTRAIT_CFG.outfitDir : PORTRAIT_CFG.artDir;
+  const tries = [dir + key + '_face' + PORTRAIT_CFG.ext, PORTRAIT_CFG.artDir + p.id + '_face' + PORTRAIT_CFG.ext];
+  const go = (i) => { if (i >= tries.length) return cb(null); const im = new Image(); im.onload = () => cb(im); im.onerror = () => go(i + 1); im.src = tries[i]; };
+  go(0);
+}
 function zucchiniGame(uid) {
   const c = findOwned(uid); if (!c) return;
   const diff = clamp((100 - mood(c)) / 110 + c.stress / 250 - (inHeat(c) ? 0.15 : 0), 0.12, 0.95);
-  showModal('Кабачок в корзинку', `<div class="zg-wrap"><canvas id="zg" class="zg-cv"></canvas><div class="zg-hud"><span>Очки: <b id="zg-s">0</b></span><span id="zg-msg"></span><span><b id="zg-t">15</b> с</span></div></div><p class="small muted center">Тяните кабачок вниз точно в горлышко. Задели край — отскочит.</p>`,
+  showModal('Кабачок и корзинка', `<div class="zg-wrap"><canvas id="zg" class="zg-cv"></canvas><div class="zg-hud"><span>Очки: <b id="zg-s">0</b></span><span id="zg-msg"></span><span><b id="zg-t">15</b> с</span></div></div><p class="small muted center">Водите пальцем вверх-вниз: кабачок ныряет в корзинку и выныривает. Глубже и в такт сердечку — больше очков. Корзинка качается — входите, когда горлышко под кабачком.</p>`,
     [{ label: 'Хватит', act: () => _zg && _zg.finish() }]);
   const cv = document.getElementById('zg'), wrap = cv.parentElement;
-  const W = Math.min(340, wrap.clientWidth || 320), H = 300, dpr = Math.min(2, window.devicePixelRatio || 1);
+  const W = Math.min(340, wrap.clientWidth || 320), H = 330, dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px';
   const x = cv.getContext('2d'); x.scale(dpr, dpr);
-  const G = { score: 0, miss: 0, t0: performance.now(), dur: 15000, zx: W / 2, zy: 58, tx: W / 2, ty: 58, drag: false, sink: 0, shake: 0, mw: 30 + (1 - diff) * 42, msg: '', msgT: 0, pops: [], done: false };
-  const ZW = 22, ZL = 70, BY = H - 92, AMP = W * (0.12 + diff * 0.22), OM = 0.9 + diff * 1.6;
-  const lines = { ok: ['Идеально вошёл!', 'Как по маслу!', 'Корзинка довольна.', 'Вот это сноровка!', 'Без единой царапины!'], bad: ['Бум! Мимо.', 'Не лезет! Аккуратнее.', 'Корзинка хихикает.', 'Кабачок обиделся.'] };
-  const say = (t) => { G.msg = t; G.msgT = performance.now(); const m = document.getElementById('zg-msg'); if (m) m.textContent = t; };
-  const pos = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * W / r.width, (e.clientY - r.top) * H / r.height]; };
-  cv.addEventListener('pointerdown', e => { if (G.sink) return; const [px, py] = pos(e); if (Math.abs(px - G.zx) < 50 && Math.abs(py - G.zy) < 70) { G.drag = true; G.offx = G.zx - px; G.offy = G.zy - py; cv.setPointerCapture(e.pointerId); } e.preventDefault(); });
-  cv.addEventListener('pointermove', e => { if (!G.drag) return; const [px, py] = pos(e); G.tx = clamp(px + G.offx, 15, W - 15); G.ty = clamp(py + G.offy, 40, H - ZL / 2 - 4); e.preventDefault(); });
+  const ZW = 22, ZL = 92, BY = H - 150, DMAX = ZL * 0.72;
+  const TOP = BY - ZL / 2 - 70, BOT = BY - ZL / 2 + DMAX;
+  const AMP = W * (0.05 + diff * 0.17), OM = 0.8 + diff * 1.4;
+  const P = 0.85 - (1 - diff) * 0.2; // идеальный темп удара, с
+  const G = { pts: 0, strokes: 0, deep: 0, bumps: 0, rhythm: 0.5, depth: 0, dmax: 0, zx: W / 2, zy: TOP + 20, ty: TOP + 20, drag: false, inside: false, blocked: false, lastStroke: 0, shake: 0, bounce: 0, msg: '', pops: [], t0: performance.now(), dur: 15000, done: false, mw: 40 + (1 - diff) * 26, face: null, ini: (fn1(c) || '?').slice(0, 1).toUpperCase() };
+  zgFace(c, im => { G.face = im; });
+  const lines = { deep: ['Глубоко!', 'До самого донышка!', 'Корзинка довольна.', 'Вот это сноровка!'], beat: ['В ритм!', 'Ровно в такт!', 'Как по нотам!'], fast: ['Слишком быстро!', 'Помедленнее…'], slow: ['Не засыпайте!', 'Живее!'], bump: ['Ой, мимо горлышка!', 'Бум! Край корзинки.', 'Корзинка хихикает.'] };
+  const say = (t) => { G.msg = t; const m = document.getElementById('zg-msg'); if (m) m.textContent = t; };
+  const pos = e => { const r = cv.getBoundingClientRect(); return (e.clientY - r.top) * H / r.height; };
+  cv.addEventListener('pointerdown', e => { G.drag = true; G.py0 = pos(e); G.ty0 = G.ty; try { cv.setPointerCapture(e.pointerId); } catch (_) { } e.preventDefault(); });
+  cv.addEventListener('pointermove', e => { if (!G.drag) return; G.ty = clamp(G.ty0 + (pos(e) - G.py0) * 1.15, TOP, BOT); e.preventDefault(); });
   const up = () => { G.drag = false; };
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   cv.style.touchAction = 'none';
@@ -394,93 +405,166 @@ function zucchiniGame(uid) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     const el = now - G.t0, left = Math.max(0, G.dur - el);
     const tEl = document.getElementById('zg-t'); if (tEl) tEl.textContent = Math.ceil(left / 1000);
-    const bx = W / 2 + AMP * Math.sin(el / 1000 * OM) + (diff > 0.5 ? AMP * 0.25 * Math.sin(el / 1000 * OM * 2.7) : 0);
-    const prevTip = G.zy + ZL / 2; G.bx = bx; G.BY = BY; G.W = W;
-    if (G.sink) {
-      G.sink += dt; G.zx = bx; G.zy += 120 * dt;
-      if (G.sink > 0.55) { G.sink = 0; G.zx = G.tx = W / 2; G.zy = G.ty = 58; }
-    } else {
-      const k = 1 - Math.pow(0.0005, dt);
-      G.zx += (G.tx - G.zx) * k; G.zy += (G.ty - G.zy) * k;
-      const tip = G.zy + ZL / 2;
-      if (prevTip < BY && tip >= BY) {
-        const off = Math.abs(G.zx - bx);
-        if (off <= (G.mw - ZW) / 2 + 3) {
-          G.score++; G.sink = 0.001; G.drag = false; G.mw = Math.max(ZW + 6, G.mw * 0.93);
-          say(pick(lines.ok)); sfx('plop'); G.pops.push({ x: bx, y: BY, t: now });
-          const s = document.getElementById('zg-s'); if (s) s.textContent = G.score;
-        } else if (off < G.mw / 2 + 34 + ZW / 2) {
-          G.miss++; G.drag = false; G.zy = BY - ZL / 2 - 36; G.ty = G.zy - 20; G.shake = 1;
-          say(pick(lines.bad)); sfx('boing');
+    // корзинка качается: чем хуже настроение и больше стресс — тем сильнее
+    const bx = W / 2 + AMP * Math.sin(el / 1000 * OM) + (diff > 0.5 ? AMP * 0.3 * Math.sin(el / 1000 * OM * 2.6) : 0);
+    G.tilt = (AMP / W) * 0.5 * Math.cos(el / 1000 * OM);
+    G.bx = bx;
+    const k = 1 - Math.pow(0.00002, dt);
+    let ny = G.zy + (G.ty - G.zy) * k;
+    const tip = ny + ZL / 2, tol = (G.mw - ZW) / 2 + 4;
+    if (!G.inside) {
+      // снаружи кабачок тянется за корзинкой с запаздыванием
+      G.zx += (bx - G.zx) * (1 - Math.pow(0.5, dt * (7 - diff * 5)));
+      if (G.blocked && tip < BY - 18) G.blocked = false;
+      if (tip >= BY) {
+        if (!G.blocked && Math.abs(G.zx - bx) <= tol) { G.inside = true; G.dmax = 0; }
+        else { if (!G.blocked) { G.bumps++; G.shake = 1; say(pick(lines.bump)); sfx('boing'); } G.blocked = true; ny = BY - ZL / 2 - 2; G.ty = Math.min(G.ty, ny); }
+      }
+    }
+    G.zy = ny;
+    if (G.inside) {
+      G.zx = bx;
+      G.depth = clamp((G.zy + ZL / 2 - BY) / DMAX, 0, 1); G.dmax = Math.max(G.dmax, G.depth);
+      if (G.depth > 0.92 && !G.hitBottom) { G.hitBottom = true; G.bounce = 1; }
+      if (G.depth < 0.8) G.hitBottom = false;
+      if (G.zy + ZL / 2 < BY - 2) { // вынырнул — один «ход» засчитан
+        G.inside = false;
+        if (G.dmax > 0.18) {
+          const per = G.lastStroke ? (now - G.lastStroke) / 1000 : P;
+          G.lastStroke = now;
+          const q = clamp(1 - Math.abs(per - P) / P, 0, 1);
+          G.rhythm = G.rhythm * 0.6 + q * 0.4;
+          const got = Math.round((2 + G.dmax * 8) * (0.5 + G.rhythm));
+          G.pts += got; G.strokes++; if (G.dmax > 0.85) G.deep++;
+          const s = document.getElementById('zg-s'); if (s) s.textContent = G.pts;
+          G.pops.push({ x: bx, y: BY - 10, t: now, n: got });
+          if (G.dmax > 0.85 && q > 0.6) { say(pick(lines.beat)); sfx('plop'); }
+          else if (G.dmax > 0.85) { say(pick(lines.deep)); sfx('plop'); }
+          else if (per < P * 0.55) say(pick(lines.fast));
+          else if (per > P * 1.8) say(pick(lines.slow));
+          else sfx('pop');
         }
       }
-      if (G.zy + ZL / 2 > BY && !G.sink && Math.abs(G.zx - bx) < G.mw / 2 + 34) { G.zy = BY - ZL / 2 - 1; G.ty = Math.min(G.ty, G.zy); }
-    }
-    G.shake = Math.max(0, G.shake - dt * 3);
-    drawZ(x, W, H, G, bx, BY, ZW, ZL, now);
+    } else G.depth = 0;
+    G.shake = Math.max(0, G.shake - dt * 3); G.bounce = Math.max(0, G.bounce - dt * 4);
+    drawZ(x, W, H, G, bx, BY, ZW, ZL, DMAX, P, now, Math.abs(G.zx - bx) <= tol);
     if (left <= 0) return G.finish();
     requestAnimationFrame(frame);
   }
-  G.finish = () => { if (G.done) return; G.done = true; closeModal(); closenessResult(uid, G.score, G.miss); };
+  G.finish = () => { if (G.done) return; G.done = true; closeModal(); closenessResult(uid, Math.round(Math.min(6, G.pts / 30) * 10) / 10, G.bumps, G); };
   _zg = G; requestAnimationFrame(frame);
 }
-function drawZ(x, W, H, G, bx, BY, ZW, ZL, now) {
-  x.clearRect(0, 0, W, H);
-  const bg = x.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#f7e6c4'); bg.addColorStop(1, '#e8c98f'); x.fillStyle = bg; x.fillRect(0, 0, W, H);
-  x.fillStyle = 'rgba(120,70,30,.12)'; x.fillRect(0, H - 22, W, 22);
-  const sx = G.shake ? Math.sin(now / 25) * 4 * G.shake : 0;
-  // корзинка
-  const mw = G.mw, bw = mw + 68, bh = 78, X = bx + sx;
-  x.save(); x.translate(X, BY);
-  x.fillStyle = '#9a6332'; x.strokeStyle = '#4a2c14'; x.lineWidth = 2.5;
-  x.beginPath(); x.moveTo(-bw / 2, 0); x.lineTo(bw / 2, 0); x.lineTo(bw / 2 - 12, bh); x.lineTo(-bw / 2 + 12, bh); x.closePath(); x.fill(); x.stroke();
-  x.strokeStyle = 'rgba(60,30,10,.45)'; x.lineWidth = 1.5;
-  for (let i = 1; i < 5; i++) { x.beginPath(); x.moveTo(-bw / 2 + 3 * i, i * bh / 5); x.lineTo(bw / 2 - 3 * i, i * bh / 5); x.stroke(); }
-  for (let i = -3; i <= 3; i++) { x.beginPath(); x.moveTo(i * bw / 8, 0); x.lineTo(i * (bw - 24) / 8, bh); x.stroke(); }
-  // крышка с узким горлышком
-  x.fillStyle = '#b77a40'; x.strokeStyle = '#4a2c14'; x.lineWidth = 2.5;
-  x.beginPath(); x.ellipse(0, 0, bw / 2 + 4, 9, 0, 0, Math.PI * 2); x.fill(); x.stroke();
-  x.fillStyle = '#2b170a'; x.beginPath(); x.ellipse(0, 0, mw / 2, 6, 0, 0, Math.PI * 2); x.fill();
-  // мордашка корзинки
-  x.fillStyle = '#2b170a'; x.beginPath(); x.arc(-14, 34, 3, 0, 7); x.arc(14, 34, 3, 0, 7); x.fill();
-  x.fillStyle = 'rgba(232,112,122,.55)'; x.beginPath(); x.ellipse(-24, 42, 7, 4, 0, 0, 7); x.ellipse(24, 42, 7, 4, 0, 0, 7); x.fill();
-  x.strokeStyle = '#2b170a'; x.lineWidth = 2; x.beginPath(); if (G.shake > 0.1) { x.moveTo(-6, 48); x.lineTo(6, 48); } else x.arc(0, 44, 6, 0.15 * Math.PI, 0.85 * Math.PI); x.stroke();
+function zgBasket(x, G, bw, bh, mw, open) {
+  // задняя кромка и тёмное горлышко
+  x.fillStyle = '#e9b9a4'; x.strokeStyle = '#7a3f3a'; x.lineWidth = 2.5;
+  x.beginPath(); x.ellipse(0, 0, bw / 2 + 5, 11, 0, Math.PI, Math.PI * 2); x.fill(); x.stroke();
+  x.fillStyle = open ? '#3a1d22' : '#4a2328'; x.beginPath(); x.ellipse(0, 0, mw / 2, 7, 0, 0, Math.PI * 2); x.fill();
+}
+function zgBasketFront(x, G, bw, bh, mw, open, now) {
+  // тело корзинки — плетёное, розово-кремовое
+  const bodyPath = () => { x.beginPath(); x.moveTo(-bw / 2, 0); x.bezierCurveTo(-bw / 2 - 4, bh * 0.6, -bw / 2 + 14, bh, -bw / 2 + 26, bh); x.lineTo(bw / 2 - 26, bh); x.bezierCurveTo(bw / 2 - 14, bh, bw / 2 + 4, bh * 0.6, bw / 2, 0); x.closePath(); };
+  const g = x.createLinearGradient(-bw / 2, 0, bw / 2, 0); g.addColorStop(0, '#d99a86'); g.addColorStop(0.5, '#f4cdb9'); g.addColorStop(1, '#d4917e');
+  x.fillStyle = g; x.strokeStyle = '#7a3f3a'; x.lineWidth = 2.5; bodyPath(); x.fill(); x.stroke();
+  x.save(); bodyPath(); x.clip();
+  x.strokeStyle = 'rgba(122,63,58,.35)'; x.lineWidth = 1.4;
+  for (let r = 0; r < 9; r++) for (let i = -8; i <= 8; i++) { const yy = 8 + r * 11, xx = i * 14 + (r % 2) * 7; x.beginPath(); x.ellipse(xx, yy, 7, 4.5, 0, 0, Math.PI * 2); x.stroke(); }
   x.restore();
-  // кабачок
+  // кружевная оборка по низу
+  x.fillStyle = '#fffaf4'; x.strokeStyle = 'rgba(160,110,110,.6)'; x.lineWidth = 1;
+  for (let i = -bw / 2 + 32; i <= bw / 2 - 30; i += 10) { x.beginPath(); x.arc(i, bh, 5, 0, Math.PI); x.fill(); x.stroke(); x.fillStyle = 'rgba(160,110,110,.5)'; x.beginPath(); x.arc(i, bh + 2, 1.2, 0, 7); x.fill(); x.fillStyle = '#fffaf4'; }
+  // лента с бантом
+  const ry = bh * 0.3;
+  x.fillStyle = '#e46f8f'; x.fillRect(-bw / 2 + 2, ry, bw - 4, 9); x.strokeStyle = '#9c3555'; x.lineWidth = 1; x.strokeRect(-bw / 2 + 2, ry, bw - 4, 9);
+  const bxw = -bw / 2 + 26;
+  x.fillStyle = '#ef87a4'; x.strokeStyle = '#9c3555'; x.lineWidth = 1.5;
+  x.beginPath(); x.moveTo(bxw, ry + 4); x.bezierCurveTo(bxw - 22, ry - 14, bxw - 24, ry + 22, bxw, ry + 4); x.fill(); x.stroke();
+  x.beginPath(); x.moveTo(bxw, ry + 4); x.bezierCurveTo(bxw + 22, ry - 14, bxw + 24, ry + 22, bxw, ry + 4); x.fill(); x.stroke();
+  x.beginPath(); x.moveTo(bxw - 2, ry + 6); x.lineTo(bxw - 9, ry + 24); x.lineTo(bxw - 3, ry + 21); x.moveTo(bxw + 2, ry + 6); x.lineTo(bxw + 8, ry + 25); x.lineTo(bxw + 3, ry + 21); x.stroke();
+  x.fillStyle = '#c94d72'; x.beginPath(); x.arc(bxw, ry + 4, 3.5, 0, 7); x.fill();
+  // медальон с лицом
+  const my = bh * 0.58, mr = 25;
+  x.fillStyle = '#f3d27a'; x.strokeStyle = '#8a6420'; x.lineWidth = 2;
+  x.beginPath(); for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; x.arc(Math.cos(a) * (mr + 3), my + Math.sin(a) * (mr + 3), 4, 0, 7); } x.fill();
+  x.beginPath(); x.arc(0, my, mr + 2, 0, 7); x.fill(); x.stroke();
+  x.save(); x.beginPath(); x.arc(0, my, mr - 1, 0, 7); x.clip();
+  x.fillStyle = '#fff1ea'; x.fillRect(-mr, my - mr, mr * 2, mr * 2);
+  if (G.face) { const s = (mr * 2) * 1.35; x.drawImage(G.face, -s / 2, my - mr - s * 0.12, s, s); }
+  else { x.fillStyle = '#c94d72'; x.font = 'bold 26px Georgia, serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(G.ini, 0, my + 1); x.textAlign = 'start'; x.textBaseline = 'alphabetic'; }
+  x.restore();
+  x.strokeStyle = '#8a6420'; x.lineWidth = 2; x.beginPath(); x.arc(0, my, mr - 1, 0, 7); x.stroke();
+  // передняя кромка с кружевом и цветочками
+  x.fillStyle = '#f0c6b4'; x.strokeStyle = '#7a3f3a'; x.lineWidth = 2.5;
+  x.beginPath(); x.ellipse(0, 0, bw / 2 + 5, 11, 0, 0, Math.PI); x.fill(); x.stroke();
+  x.fillStyle = '#fffaf4'; x.strokeStyle = 'rgba(160,110,110,.6)'; x.lineWidth = 1;
+  for (let a = 0.12; a < Math.PI - 0.1; a += 0.22) { const px = Math.cos(a) * (bw / 2 + 5), py = Math.sin(a) * 11 + 3; x.beginPath(); x.arc(px, py, 4, 0, Math.PI); x.fill(); x.stroke(); }
+  x.strokeStyle = open ? 'rgba(120,200,120,.9)' : 'rgba(255,255,255,.0)'; x.lineWidth = 2.5; x.beginPath(); x.ellipse(0, 0, mw / 2 + 2, 8, 0, 0, Math.PI * 2); x.stroke();
+  const flower = (fx, fy, col) => { x.fillStyle = col; for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2 + now / 3000; x.beginPath(); x.arc(fx + Math.cos(a) * 4.5, fy + Math.sin(a) * 4.5, 3.6, 0, 7); x.fill(); } x.fillStyle = '#ffd95a'; x.beginPath(); x.arc(fx, fy, 2.6, 0, 7); x.fill(); };
+  flower(bw / 2 - 6, 4, '#ffffff'); flower(bw / 2 - 20, 9, '#f7a8c0'); flower(-bw / 2 + 10, 6, '#f7a8c0'); flower(bw / 2 + 4, -4, '#c9a8f0');
+}
+function drawZ(x, W, H, G, bx, BY, ZW, ZL, DMAX, P, now, aligned) {
+  x.clearRect(0, 0, W, H);
+  const bg = x.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#fbe9df'); bg.addColorStop(1, '#efc9b8'); x.fillStyle = bg; x.fillRect(0, 0, W, H);
+  x.fillStyle = 'rgba(122,63,58,.10)'; x.fillRect(0, H - 22, W, 22);
+  const sx = G.shake ? Math.sin(now / 25) * 4 * G.shake : 0, sq = 1 - G.bounce * 0.05;
+  const mw = G.mw, bw = mw + 104, bh = 122, X = bx + sx;
+  // тень
+  x.fillStyle = 'rgba(80,30,30,.15)'; x.beginPath(); x.ellipse(X, BY + bh + 6, bw / 2, 7, 0, 0, 7); x.fill();
+  x.save(); x.translate(X, BY + bh); x.rotate(G.tilt || 0); x.scale(1 / sq, sq); x.translate(0, -bh);
+  zgBasket(x, G, bw, bh, mw, aligned || G.inside);
+  // кабачок — между задней и передней стенкой
+  x.restore();
+  x.save();
   const zx = G.zx, zy = G.zy;
-  x.save(); x.translate(zx, zy);
-  if (G.sink) { x.beginPath(); x.rect(-40, -200, 80, BY - zy + 200); x.clip(); }
-  const tilt = G.drag ? clamp((G.tx - zx) / 120, -0.3, 0.3) : 0; x.rotate(tilt);
+  x.translate(zx, zy);
   const zg = x.createLinearGradient(-ZW / 2, 0, ZW / 2, 0); zg.addColorStop(0, '#2f6b26'); zg.addColorStop(0.45, '#6fae45'); zg.addColorStop(1, '#2a5a20');
   x.fillStyle = zg; x.strokeStyle = '#1d3d14'; x.lineWidth = 2;
   x.beginPath(); x.moveTo(-ZW / 2 + 2, -ZL / 2 + 8); x.quadraticCurveTo(0, -ZL / 2 - 4, ZW / 2 - 2, -ZL / 2 + 8); x.lineTo(ZW / 2, ZL / 2 - 10); x.quadraticCurveTo(0, ZL / 2 + 6, -ZW / 2, ZL / 2 - 10); x.closePath(); x.fill(); x.stroke();
   x.strokeStyle = 'rgba(220,240,180,.5)'; x.lineWidth = 1.5; for (const o of [-5, 0, 5]) { x.beginPath(); x.moveTo(o, -ZL / 2 + 8); x.lineTo(o * 0.9, ZL / 2 - 8); x.stroke(); }
   x.fillStyle = '#7a5a2a'; x.fillRect(-3, -ZL / 2 - 9, 6, 9);
   x.restore();
-  for (const p of G.pops) { const a = (now - p.t) / 900; if (a > 1) continue; x.globalAlpha = 1 - a; x.fillStyle = '#e8707a'; x.font = '18px serif'; x.fillText('♥', p.x - 20 + a * 10, p.y - 10 - a * 40); x.fillText('♥', p.x + 12, p.y - 20 - a * 30); x.globalAlpha = 1; }
+  x.save(); x.translate(X, BY + bh); x.rotate(G.tilt || 0); x.scale(1 / sq, sq); x.translate(0, -bh);
+  zgBasketFront(x, G, bw, bh, mw, aligned || G.inside, now);
+  x.restore();
+  // шкала глубины (справа)
+  const mx = W - 18, mt = 40, mh = 150;
+  x.fillStyle = 'rgba(255,255,255,.7)'; x.strokeStyle = '#7a3f3a'; x.lineWidth = 1.5; x.beginPath(); x.roundRect ? x.roundRect(mx - 6, mt, 12, mh, 6) : x.rect(mx - 6, mt, 12, mh); x.fill(); x.stroke();
+  const dg = x.createLinearGradient(0, mt + mh, 0, mt); dg.addColorStop(0, '#f7a8c0'); dg.addColorStop(1, '#c94d72');
+  x.fillStyle = dg; const dh = mh * G.depth; x.fillRect(mx - 4, mt + 2, 8, Math.max(0, dh - 2));
+  if (G.dmax && G.inside) { x.fillStyle = '#7a3f3a'; x.fillRect(mx - 8, mt + mh * G.dmax - 1, 16, 2); }
+  x.fillStyle = '#7a3f3a'; x.font = '10px sans-serif'; x.textAlign = 'center'; x.fillText('глуб.', mx, mt - 6);
+  // шкала ритма (слева) и сердечко-метроном
+  const lx = 18;
+  x.fillStyle = 'rgba(255,255,255,.7)'; x.beginPath(); x.roundRect ? x.roundRect(lx - 6, mt, 12, mh, 6) : x.rect(lx - 6, mt, 12, mh); x.fill(); x.stroke();
+  x.fillStyle = '#e46f8f'; const rh = mh * G.rhythm; x.fillRect(lx - 4, mt + mh - rh + 2, 8, Math.max(0, rh - 4));
+  x.fillStyle = '#7a3f3a'; x.fillText('ритм', lx, mt - 6);
+  const beat = ((now - G.t0) / 1000 / P) % 1, hs = 1 + Math.max(0, 1 - beat * 4) * 0.45;
+  x.save(); x.translate(lx + 4, mt + mh + 26); x.scale(hs, hs); x.fillStyle = '#e46f8f'; x.font = '22px serif'; x.fillText('♥', 0, 8); x.restore();
+  x.fillStyle = '#7a3f3a'; x.font = '11px sans-serif'; x.fillText(`ходов ${G.strokes}`, W / 2, H - 6);
+  x.textAlign = 'start';
+  for (const p of G.pops) { const a = (now - p.t) / 900; if (a > 1) continue; x.globalAlpha = 1 - a; x.fillStyle = '#c94d72'; x.font = 'bold 15px sans-serif'; x.fillText('+' + p.n, p.x + 30, p.y - a * 40); x.font = '16px serif'; x.fillText('♥', p.x - 40 + a * 10, p.y - 4 - a * 30); x.globalAlpha = 1; }
   G.pops = G.pops.filter(p => now - p.t < 900);
-  if (!G.drag && !G.sink && G.score === 0 && G.miss === 0) { x.fillStyle = 'rgba(60,30,10,.7)'; x.font = '14px sans-serif'; x.textAlign = 'center'; x.fillText('↓ тяните кабачок вниз', W / 2, 20); x.textAlign = 'start'; }
+  if (!G.drag && !G.strokes && !G.bumps) { x.fillStyle = 'rgba(90,40,40,.75)'; x.font = '14px sans-serif'; x.textAlign = 'center'; x.fillText('↕ водите пальцем вверх-вниз', W / 2, 20); x.textAlign = 'start'; }
 }
 const CLOSE_SCENE = {
-  any: ['{n} берёт вас за руку и, не говоря ни слова, ведёт в комнату. Дверь закрывается. Остальное знают только свечи.', 'Шёпот, смешок, шорох одеяла — и темнота. Луна деликатно уходит за тучу.', '«Только свечу не гасите сразу», — просит {n}. Свеча гаснет сама. Предательница.'],
-  charming: ['{n} лукаво улыбается: «Ну что, хозяин, покажете, на что способны не только за прилавком?» Свеча гаснет.'],
-  sensitive: ['{n} долго не решается, а потом прижимается к вам и шепчет: «Только не уходите до утра». Вы и не уходите.'],
-  stubborn: ['«Я сам{|а} решаю, когда», — заявляет {n} и решительно задувает свечу. Похоже, решение принято.'],
-  cheerful: ['{n} хохочет, путаясь в рубашке, — и смех постепенно переходит в совсем другие звуки. Занавес.'],
-  loyal: ['{n} смотрит так, будто ждал{|а} этого всю жизнь. Дальше — темнота и очень тихое «наконец-то».'],
-  lazy: ['{n} тянет вас на кровать: «Наконец-то дело, где можно не вставать». Свет гаснет.'],
-  clever: ['{n} шепчет: «Я всё рассчитал{|а}», — и, судя по звукам за дверью, расчёт был верным.'],
+  any: ['{n} берёт вас за руку, робко заглядывает в глаза и ведёт в комнату. Дверь закрывается. Остальное знают только свечи.', 'Шёпот, смешок, шорох одеяла — и темнота. Луна деликатно уходит за тучу.', '«Только свечу не гасите сразу, {х}», — просит {n}. Свеча гаснет сама. Предательница.'],
+  charming: ['{n} лукаво улыбается и шепчет: «Позвольте мне сегодня порадовать вас, {х}». Свеча гаснет.'],
+  sensitive: ['{n} долго не решается, а потом прижимается к вам и шепчет: «Только не уходите до утра, {х}». Вы и не уходите.'],
+  stubborn: ['«Позвольте, я сам{|а} задую свечу, {х}», — просит {n}. Вы позволяете. Темнота.'],
+  cheerful: ['{n} хохочет, путаясь в рубашке, и шепчет «простите, {х}»… Дальше — занавес.'],
+  loyal: ['{n} смотрит так, будто ждал{|а} этого всю жизнь. Дальше — темнота и очень тихое «наконец-то, {х}».'],
+  lazy: ['{n} тянет вас к постели: «Можно сегодня я побуду ленив{ым|ой} рядом с вами, {х}?» Свет гаснет.'],
+  clever: ['{n} шепчет: «Я всё продумал{|а}, {х}», — и задувает свечу.'],
   beast: ['Хвост {n} обвивает вашу ногу, уши прижаты, глаза светятся в полумраке. Мурлыканье не стихает до рассвета.'],
   elf: ['{n} напевает старую эльфийскую песню, и где-то на третьем куплете слова теряются. Звёзды краснеют.'],
-  dwarf: ['{n} крякает: «Ну, раз уж кабачок влез…» — и задувает лампу. Гномы во всём основательны.'],
-  heat: ['Эти дни {n} сама не своя — и сегодня наконец не нужно сдерживаться. Дальше — только темнота и сбитое дыхание.'],
+  dwarf: ['{n} кашляет: «Ну, раз уж кабачок влез, {х}…» — и задувает лампу. Гномы во всём основательны.'],
+  heat: ['Эти дни {n} сама не своя — и сегодня наконец не нужно сдерживаться. Дальше — только темнота.'],
 };
 const CLOSE_MORNING = ['Утром {n} напевает себе под нос и краснеет при каждом вашем взгляде.', 'Утром {n} подаёт вам завтрак и делает вид, что ничего не было. Уши/щёки выдают с головой.', 'Утром {n} подмигивает вам через всю кухню. Повар роняет половник.', 'Утром {n} ходит с такой улыбкой, что покупатели спрашивают, что сегодня в продаже.'];
 function playerSnap(c) {
   const pot = {}; for (const s of STATS) pot[s.key] = 60;
   return { uid: 'player', name: 'Хозяин лавки (вы)', preset: c.preset, race: c.race, g: 'm', rarity: 1, pot, traits: [], breed: { line: 60, her: 60 }, kin: [] };
 }
-function closenessResult(uid, score, miss) {
+function closenessResult(uid, score, miss, G) {
   const c = findOwned(uid); if (!c) return;
   const k = 0.5 + Math.min(score, 6) * 0.17;
   c.closeDay = S.day; c.heatCare = S.day;
@@ -489,7 +573,7 @@ function closenessResult(uid, score, miss) {
   const dl = loyaltyGain(c, 4 * k); fatigueGain(c, 5);
   const heat = inHeat(c);
   let pregTxt = '', yes = false, pc = 0;
-  if (c.g === 'f' && !c.preg) {
+  if (c.g === 'f' && !c.preg && !playerFem()) {
     const room = S.owned.length + S.owned.filter(x => x.preg).length < S.capacity;
     pc = clamp(0.06 + c.breed.fert / 100 * 0.22 + (season().fert || 0) + (heat ? 0.15 : 0) + (k - 1) * 0.05 + (c.health - 70) / 400, 0.03, 0.5);
     if (!room) pregTxt = '<div class="small muted">В поместье нет места для наследника — беременность сейчас невозможна.</div>';
@@ -510,7 +594,7 @@ function closenessResult(uid, score, miss) {
   addLog(`Вечер наедине с ${fn1(c)}.${yes ? ' Беременность!' : ''}`);
   sfx(yes ? 'sparkle' : 'heart');
   showModal('Вечер вдвоём', `<div class="fade-scene"><p>${scene}</p><p class="muted">…</p><p>${morn}</p></div>
-    <div class="small">Кабачков в корзинке: <b>${score}</b>${miss ? `, отскочило: ${miss}` : ''} → эффект ×${k.toFixed(2)}</div>
+    <div class="small">${G ? `Ходов: <b>${G.strokes}</b>, до донышка: <b>${G.deep}</b>, ритм <b>${Math.round(G.rhythm * 100)}%</b>, очков ${G.pts}${miss ? `, мимо горлышка: ${miss}` : ''}` : `Оценка: <b>${score}</b>`} → эффект ×${k.toFixed(2)}</div>
     <div class="mchips"><span class="mchip up">симпатия +${da}</span><span class="mchip up">настроение +${dm}</span><span class="mchip up">стресс −${ds}</span>${dl ? `<span class="mchip up">лояльность +${dl}</span>` : ''}<span class="mchip down">усталость +5</span></div>${pregTxt}`,
     [{ label: 'Доброе утро', cls: 'btn-primary', act: 'close' }]);
   save(); render();
