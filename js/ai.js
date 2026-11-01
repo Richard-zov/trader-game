@@ -68,6 +68,7 @@ const AI = (() => {
     catch (e) { throw aerr(e && e.name === 'AbortError' ? 'timeout' : 'offline'); }
     finally { clearTimeout(t); }
     let j = null; try { j = await r.json(); } catch (e) { }
+    if (Array.isArray(j)) j = j.find(x => x && x.error) || j[0] || null;
     if (!r.ok || (j && j.error)) throw classify(r.status, j && j.error);
     if (j && j.status === 'failed') throw classify(400, (j.errors && j.errors[0]) || { message: 'failed' });
     return j || {};
