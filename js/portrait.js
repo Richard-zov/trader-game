@@ -179,7 +179,7 @@ function renderPortrait(ch, size, extraClass) {
   if (!_missing.has(art)) {
     const meta = (typeof ART_META !== 'undefined') && ART_META[key];
     if (size === 'lg' && meta) {
-      artImg = `<div class="portrait-art art-lg art-box" style="--fh:${fh};aspect-ratio:${meta.w}/${meta.h}">
+      artImg = `<div class="portrait-art art-lg art-box" data-key="${key}" data-race="${p.race}" style="--fh:${fh};aspect-ratio:${meta.w}/${meta.h}">
         <img class="art-img" src="${art}" alt="" ${onl}>${headOverlays(ch, meta)}</div>`;
     } else {
       artImg = `<img class="portrait-art art-${size}" src="${art}" alt="" style="--fh:${fh}" ${onl}>`;
