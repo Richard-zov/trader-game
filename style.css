@@ -268,17 +268,6 @@ code { background: rgba(90, 60, 30, .15); padding: 0 4px; border-radius: 4px; }
 .acc-names { font-size: 10.5px; opacity: .75; margin-top: 2px; line-height: 1.2; }
 
 /* ===================== v2 ===================== */
-/* бегущая строка новостей */
-.ticker { position: relative; overflow: hidden; white-space: nowrap; margin: -4px -4px 10px; padding: 5px 0; border-radius: 8px;
-  background: #24150a; border: 1px solid #b8862f; color: #f4dfae; font-size: 12px; }
-.ticker::before, .ticker::after { content: ""; position: absolute; top: 0; bottom: 0; width: 18px; z-index: 1; }
-.ticker::before { left: 0; background: linear-gradient(90deg, #24150a, transparent); }
-.ticker::after { right: 0; background: linear-gradient(-90deg, #24150a, transparent); }
-.tk-track { display: inline-block; padding-left: 10px; animation: tk var(--dur, 40s) linear infinite; }
-.tk-sep { color: var(--amber2); margin: 0 12px; }
-@keyframes tk { to { transform: translateX(-50%); } }
-@media (prefers-reduced-motion: reduce) { .tk-track { animation: none; padding-left: 8px; } }
-
 /* рынок: 3 колонки */
 .m-grid { grid-template-columns: repeat(3, 1fr); gap: 7px; }
 .m-card { padding: 4px; border-width: 2px; }
@@ -498,3 +487,87 @@ body[data-tod="night"] #app::after { background: linear-gradient(180deg, rgba(30
 .no-anim *, .no-anim *::before, .no-anim *::after { animation: none !important; transition: none !important; }
 .no-anim .tk-track { padding-left: 8px; }
 .no-anim .pt { display: none; }
+
+/* ===================== v4 ===================== */
+/* зоны прикосновений поверх рисунка */
+.art-box .tz { position: absolute; z-index: 4; cursor: pointer; border-radius: 45%; pointer-events: auto; -webkit-tap-highlight-color: transparent; }
+.art-box .tz:active { background: radial-gradient(rgba(255,214,150,.35), transparent 70%); }
+.tz-chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 4px 0 6px; }
+.tz-chip { flex: 1 0 22%; padding: 5px 4px; border-radius: 9px; border: 1px solid #8a5a2a; background: linear-gradient(#fff3d6, #e8cf9c); color: var(--ink); font: inherit; font-size: 12px; font-weight: 700; line-height: 1.1; cursor: pointer; }
+.tz-chip small { display: block; font-weight: 400; font-size: 10px; opacity: .75; }
+.tz-chip.lo { opacity: .6; }
+.tz-chip.done { opacity: .45; filter: grayscale(.6); }
+.tz-chip:active { transform: scale(.96); }
+.tz-help, .q-btn { width: 24px; height: 24px; border-radius: 50%; border: 1px solid #8a5a2a; background: #f3e3bf; color: #5a3714; font-weight: 800; font-size: 13px; line-height: 20px; padding: 0; cursor: pointer; vertical-align: middle; }
+.tz-help { align-self: center; }
+.q-btn { width: 20px; height: 20px; font-size: 11px; line-height: 16px; }
+/* движения руки */
+.pet-hand.flip svg { transform: scaleX(-1); }
+.pet-hand.hm-comb { animation-name: hmComb; }
+.pet-hand.hm-rub { animation-name: hmRub; }
+.pet-hand.hm-pinch { animation-name: hmPinch; }
+.pet-hand.hm-knead { animation-name: hmKnead; }
+.pet-hand.hm-pat { animation-name: hmPat; }
+.pet-hand.hm-hold { animation-name: hmHold; }
+@keyframes hmComb { 0% { opacity: 0; transform: translate(-50%, -90%) } 15% { opacity: 1 } 50% { transform: translate(-50%, -20%) } 65% { transform: translate(-50%, -85%) } 90% { opacity: 1; transform: translate(-50%, -20%) } 100% { opacity: 0 } }
+@keyframes hmRub { 0% { opacity: 0; transform: translate(-50%, -70%) rotate(0) } 15% { opacity: 1 } 30%, 70% { transform: translate(-50%, -70%) rotate(-12deg) } 50%, 90% { transform: translate(-50%, -70%) rotate(12deg) } 100% { opacity: 0 } }
+@keyframes hmPinch { 0% { opacity: 0; transform: translate(-50%, -60%) scale(1) } 20% { opacity: 1 } 45% { transform: translate(-50%, -60%) scale(.86) } 65% { transform: translate(-50%, -60%) scale(1) } 100% { opacity: 0 } }
+@keyframes hmKnead { 0% { opacity: 0 } 12% { opacity: 1 } 25%, 55% { transform: translate(-50%, -62%) scale(.9, .85) } 40%, 70% { transform: translate(-50%, -70%) scale(1) } 100% { opacity: 0; transform: translate(-50%, -70%) } }
+@keyframes hmPat { 0% { opacity: 0; transform: translate(-50%, -85%) } 15% { opacity: 1 } 25%, 55%, 85% { transform: translate(-50%, -60%) } 40%, 70% { transform: translate(-50%, -85%) } 100% { opacity: 0 } }
+@keyframes hmHold { 0% { opacity: 0; transform: translate(-50%, -40%) } 25% { opacity: 1; transform: translate(-50%, -60%) } 80% { opacity: 1; transform: translate(-50%, -60%) } 100% { opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { .pet-hand { animation-duration: .01s !important; } }
+/* «сблизиться» */
+.btn-close { width: 100%; margin-top: 6px; background: linear-gradient(#c75b6e, #8e2f45); color: #fff4ec; border-color: #5e1a2a; }
+.btn-close small { display: block; font-size: 10.5px; font-weight: 400; opacity: .9; }
+.btn-close.soft { filter: saturate(.45); opacity: .85; }
+.heat-t { color: #c0395a; font-weight: 700; }
+.heat-note { background: rgba(192, 57, 90, .14); border-color: #c0395a; }
+.b-aff .mbar-t i { background: linear-gradient(#f0a4b4, #a83b58); }
+.report li.heat { color: #a8304f; font-weight: 700; }
+.head-tools { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+/* «почему так» */
+details.why { margin: 4px 0 2px; font-size: 12px; }
+details.why > summary { cursor: pointer; color: #6b4316; font-weight: 700; list-style: none; }
+details.why > summary::-webkit-details-marker { display: none; }
+details.why > summary::before { content: "▸ "; }
+details.why[open] > summary::before { content: "▾ "; }
+details.why table { width: 100%; border-collapse: collapse; margin-top: 3px; background: rgba(255, 248, 230, .5); border-radius: 6px; }
+details.why td { padding: 2px 5px; border-bottom: 1px dotted rgba(90, 55, 20, .25); vertical-align: top; }
+details.why td:last-child { text-align: right; white-space: nowrap; font-weight: 700; }
+details.why td.good { color: #3d6b2a; } details.why td.bad { color: #a8304f; }
+details.why tr.tot td { border-bottom: 0; border-top: 1px solid rgba(90, 55, 20, .5); font-weight: 800; }
+details.why .why-n { color: #6b5a40; font-size: 11px; margin-top: 2px; }
+/* план дня */
+.plan-row { display: grid; grid-template-columns: 44px 1fr; gap: 4px 8px; padding: 7px 0; border-bottom: 1px dashed rgba(90, 55, 20, .35); }
+.plan-row .pr-p { width: 44px; }
+.plan-row .pr-l { font-size: 12px; margin-top: 4px; }
+.plan-row .pr-w { color: #a8304f; font-size: 11.5px; margin-top: 2px; }
+details.why td small { display: block; font-size: 10.5px; opacity: .7; font-weight: 400; }
+.plan-row .pr-n { font-weight: 800; }
+.plan-row .pr-seg { display: flex; gap: 3px; flex-wrap: wrap; }
+.plan-row .pr-seg button { flex: 1; padding: 4px 2px; font-size: 11px; border-radius: 7px; border: 1px solid #8a5a2a; background: #f6e7c4; color: var(--ink); font: inherit; font-size: 11px; cursor: pointer; }
+.plan-row .pr-seg button.on { background: #6b4316; color: #fff2d6; }
+.plan-row .pr-f { font-size: 12px; }
+.plan-row .pr-why { grid-column: 1 / -1; }
+.plan-tot { margin-top: 8px; padding: 8px; border-radius: 8px; background: rgba(255, 248, 230, .55); font-size: 13px; }
+.plan-tot div { display: flex; justify-content: space-between; }
+.plan-warn { color: #a8304f; font-size: 12px; margin: 4px 0; }
+/* справка, новости */
+.help-s { margin: 5px 0; border: 1px solid rgba(90, 55, 20, .3); border-radius: 8px; padding: 5px 8px; background: rgba(255, 248, 230, .4); }
+.help-s > summary { font-weight: 800; cursor: pointer; }
+.help-t { font-size: 13px; line-height: 1.4; }
+.help-t p { margin: 5px 0; }
+.news-l { margin: 4px 0; padding-left: 18px; font-size: 13px; }
+.news-l li { margin: 3px 0; }
+.ev-news summary { cursor: pointer; }
+.req { width: 100%; border-collapse: collapse; font-size: 13px; margin: 6px 0; }
+.req td { padding: 3px 4px; border-bottom: 1px dotted rgba(90, 55, 20, .3); }
+.req tr.ok td:first-child { color: #3d6b2a; font-weight: 700; } .req tr.no td:first-child { color: #a8304f; font-weight: 700; }
+.req td:last-child { text-align: right; }
+.quote { font-style: italic; margin: 8px 0; padding: 6px 10px; border-left: 3px solid #c0395a; background: rgba(192, 57, 90, .08); }
+.fade-scene { font-style: italic; line-height: 1.5; }
+/* мини-игра */
+.zg-wrap { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; }
+.zg-cv { width: 100%; height: auto; display: block; border-radius: 10px; background: linear-gradient(#3a2414, #6b4422); touch-action: none; }
+.zg-hud { display: flex; justify-content: space-between; font-weight: 800; font-size: 14px; margin-bottom: 4px; }
+.modal-body a, .panel a { color: #8a3a1a; font-weight: 700; }

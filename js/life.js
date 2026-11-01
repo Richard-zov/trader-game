@@ -10,6 +10,7 @@ function moodKey(c) {
 function emotesOf(c, owned) {
   const e = [];
   if (c.preg) e.push('preg');
+  if (typeof inHeat === 'function' && inHeat(c)) e.push('heat');
   if (c.fatigue >= 82 || c.sickDays) e.push('zzz');
   else if (c.fatigue >= 55) e.push('sweat');
   if (c.stress >= 70 || (owned && c.loyalty < 15)) e.push('anger');
@@ -52,6 +53,8 @@ const GREET = {
     human: ['На рынке сегодня шумно.', 'Соседи опять спорят из-за забора.'],
   },
   preg: ['Малыш сегодня толкался.', 'Хочется солёных огурцов… и мёда.'],
+  flirt: ['Вы сегодня опять так смотрите… Мне нравится.', 'Если позовёте вечером — я, может, и приду. А может, и нет. Проверьте.', 'Я тут подумал(а): у вас слишком тёплые руки для торговца.', 'Хозяин, вы краснеете или это свечи?', 'Спорим, вы обо мне думали? Я — да. О вас.', 'Опять вы. Прекрасно. То есть… здравствуйте.'],
+  heat: ['*тяжело дышит* Простите… эти дни я сама не своя.', 'Не подходите так близко… Хотя нет, подходите.', 'Мне жарко, хотя на дворе прохладно. Знаете почему? Вот и я знаю.', 'Хвост сегодня не слушается. И я, кажется, тоже.', 'Погладьте меня, а? Иначе я начну грызть прилавок.'],
 };
 function greetLine(c) {
   const owned = !!findOwned(c.uid);
@@ -64,6 +67,8 @@ function greetLine(c) {
       for (const t of c.traits) if (GREET.trait[t]) pool.push(...GREET.trait[t]);
       if (R() < 0.5) pool.push(...(GREET.race[c.race] || []));
       if (c.preg) pool.push(...GREET.preg, ...GREET.preg);
+      if ((c.aff || 0) >= 50 && mood(c) >= 50) pool.push(...GREET.flirt);
+      if (typeof inHeat === 'function' && inHeat(c)) pool = GREET.heat.slice();
     }
   }
   return pick(pool).replace(/(\S+)\(а\)/g, (_, w) => g(c, w, w + 'а')).replace(/(\S+)\(ась\)/g, (_, w) => g(c, w + 'ся', w + 'ась')).replace(/(\S+)\(ла\)/g, (_, w) => g(c, w, w.replace(/ёл$/, '') + 'ла')).replace(/(\S+)\(а\)/g, '$1');

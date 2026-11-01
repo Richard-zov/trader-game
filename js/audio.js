@@ -123,6 +123,27 @@ const Audio_ = (() => {
     bad() { const t = ctx.currentTime; tone('triangle', 220, t, 0.01, 0.35, 0.1, 140); },
     heart() { const t = ctx.currentTime; [79, 83, 86].forEach((m, i) => tone('sine', hz(m), t + i * 0.1, 0.01, 0.7, 0.04)); },
   };
+  // шумовые всплески для прикосновений: шорох, похлопывание, взмах
+  let wbuf = null;
+  function nz(t, dur, type, f0, f1, vol, q) {
+    if (!wbuf) { const len = ctx.sampleRate; wbuf = ctx.createBuffer(1, len, ctx.sampleRate); const d = wbuf.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1; }
+    const src = ctx.createBufferSource(); src.buffer = wbuf; src.loop = true;
+    const f = ctx.createBiquadFilter(); f.type = type; f.Q.value = q || 1; f.frequency.setValueAtTime(f0, t); if (f1) f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.04, dur * 0.3)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(sfxBus); src.start(t, Math.random() * 0.5); src.stop(t + dur + 0.05);
+  }
+  Object.assign(SFX, {
+    pat() { const t = ctx.currentTime; for (let i = 0; i < 2; i++) { nz(t + i * 0.22, 0.09, 'lowpass', 420, 160, 0.35, 0.7); tone('sine', 140, t + i * 0.22, 0.004, 0.08, 0.12, 90); } },
+    knead() { const t = ctx.currentTime; for (let i = 0; i < 3; i++) { nz(t + i * 0.28, 0.16, 'lowpass', 300, 150, 0.22, 0.8); tone('sine', 110 + i * 6, t + i * 0.28, 0.02, 0.14, 0.08, 85); } },
+    rustle() { const t = ctx.currentTime; for (let i = 0; i < 4; i++) nz(t + i * 0.12 + Math.random() * 0.04, 0.16, 'bandpass', 3200 + Math.random() * 1500, 2200, 0.09, 1.4); },
+    swish() { const t = ctx.currentTime; nz(t, 0.42, 'bandpass', 600, 2600, 0.16, 2.2); nz(t + 0.36, 0.3, 'bandpass', 2400, 700, 0.1, 2.2); },
+    squish() { const t = ctx.currentTime; tone('sine', 520, t, 0.01, 0.16, 0.12, 880); tone('triangle', 900, t + 0.13, 0.005, 0.12, 0.05, 620); },
+    flick() { const t = ctx.currentTime; tone('triangle', 1400, t, 0.002, 0.06, 0.07, 700); nz(t, 0.08, 'highpass', 4000, 0, 0.08, 0.7); tone('triangle', 1250, t + 0.16, 0.002, 0.06, 0.05, 650); },
+    warm() { const t = ctx.currentTime; tone('sine', hz(69), t, 0.06, 0.6, 0.07); tone('sine', hz(76), t + 0.12, 0.06, 0.7, 0.06); tone('sine', hz(81), t + 0.24, 0.06, 0.8, 0.045); },
+    giggle() { const t = ctx.currentTime; for (let i = 0; i < 5; i++) tone('triangle', 820 + (i % 2) * 140 + i * 30, t + i * 0.075, 0.005, 0.06, 0.05, 700 + i * 20); },
+    boing() { const t = ctx.currentTime; tone('sine', 320, t, 0.005, 0.32, 0.16, 110); tone('triangle', 640, t, 0.005, 0.18, 0.04, 220); },
+    plop() { const t = ctx.currentTime; tone('sine', 260, t, 0.004, 0.18, 0.18, 620); nz(t + 0.05, 0.12, 'lowpass', 900, 300, 0.12, 0.8); },
+  });
   function sfx(name) { if (!ctx || !st.sfx) return; try { SFX[name] && SFX[name](); } catch (e) { } }
 
   // Мурчание: шум через полосовой фильтр, амплитуда модулируется частотой ~25 Гц (как у кошек),
