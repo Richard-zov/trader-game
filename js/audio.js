@@ -144,6 +144,74 @@ const Audio_ = (() => {
     boing() { const t = ctx.currentTime; tone('sine', 320, t, 0.005, 0.32, 0.16, 110); tone('triangle', 640, t, 0.005, 0.18, 0.04, 220); },
     plop() { const t = ctx.currentTime; tone('sine', 260, t, 0.004, 0.18, 0.18, 620); nz(t + 0.05, 0.12, 'lowpass', 900, 300, 0.12, 0.8); },
   });
+
+  // удары инструментов наказания (без жестокости — короткие «шлёп» и «вжух»)
+  Object.assign(SFX, {
+    slap() { const t = ctx.currentTime; nz(t, 0.07, 'highpass', 1800, 0, 0.32, 0.8); nz(t, 0.11, 'lowpass', 900, 250, 0.3, 0.8); tone('sine', 170, t, 0.002, 0.08, 0.1, 90); },
+    smack() { const t = ctx.currentTime; tone('triangle', 820, t, 0.001, 0.07, 0.14, 380); nz(t, 0.06, 'bandpass', 2600, 1200, 0.22, 2); tone('sine', 1300, t + 0.01, 0.001, 0.12, 0.04, 1100); },
+    swish2() { const t = ctx.currentTime; nz(t, 0.16, 'bandpass', 900, 4200, 0.16, 3); nz(t + 0.15, 0.06, 'highpass', 3000, 0, 0.3, 0.8); tone('triangle', 600, t + 0.15, 0.001, 0.05, 0.06, 300); },
+    crack() { const t = ctx.currentTime; nz(t, 0.2, 'bandpass', 500, 3800, 0.14, 2.5); nz(t + 0.19, 0.035, 'highpass', 2500, 0, 0.5, 0.7); nz(t + 0.2, 0.12, 'bandpass', 1500, 700, 0.12, 1.5); },
+  });
+
+  // ---------- голос: мягкий формантный синтез (вздох, «м-м», смешок, ворчание, «ай!») ----------
+  // Только короткие бытовые звуки: никакой «взрослой» вокализации.
+  const VOW = {
+    a: [[800, 90, 1], [1250, 110, 0.5], [2600, 160, 0.14]], i: [[310, 60, 1], [2250, 120, 0.42], [3000, 170, 0.18]],
+    o: [[520, 70, 1], [900, 90, 0.5], [2500, 150, 0.08]], u: [[340, 60, 1], [780, 90, 0.3], [2300, 150, 0.05]],
+    e: [[480, 70, 1], [1850, 110, 0.4], [2600, 150, 0.14]], y: [[380, 70, 1], [1500, 110, 0.35], [2450, 150, 0.1]],
+    m: [[260, 60, 1], [1100, 260, 0.05], [2300, 300, 0.02]],
+  };
+  function voc(t, o) {
+    const male = o.male, fk = male ? 0.86 : 1, base = (male ? 118 : 225) * (o.pitch || 1);
+    const dur = o.dur, vol = (o.vol || 0.14), A = VOW[o.v0 || 'a'], B = VOW[o.v1 || o.v0 || 'a'];
+    const src = ctx.createOscillator(); src.type = 'sawtooth';
+    const pts = o.f0 || [[0, 1], [1, 0.9]];
+    src.frequency.setValueAtTime(base * pts[0][1], t);
+    for (const [x, y] of pts.slice(1)) src.frequency.linearRampToValueAtTime(base * y, t + x * dur);
+    let lfo = null;
+    if (o.vib) { lfo = ctx.createOscillator(); lfo.frequency.value = o.vib; const lg = ctx.createGain(); lg.gain.value = base * 0.025; lfo.connect(lg); lg.connect(src.frequency); lfo.start(t); lfo.stop(t + dur + 0.1); }
+    const pre = ctx.createBiquadFilter(); pre.type = 'lowpass'; pre.frequency.value = o.v0 === 'm' ? 900 : (o.lp || 3400);
+    const vg = ctx.createGain(); vg.gain.value = o.voiced == null ? 1 : o.voiced;
+    src.connect(pre); pre.connect(vg);
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(0.0001, t);
+    out.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.06, dur * (o.att || 0.2)));
+    out.gain.setValueAtTime(vol, t + dur * 0.6);
+    out.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    out.connect(sfxBus);
+    let br = null;
+    if (o.breath) {
+      if (!wbuf) nz(t, 0.01, 'lowpass', 100, 0, 0.0001, 1);
+      br = ctx.createBufferSource(); br.buffer = wbuf; br.loop = true;
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 500;
+      const bg = ctx.createGain(); bg.gain.value = o.breath; br.connect(hp); hp.connect(bg);
+      br._g = bg; br.start(t, Math.random() * 0.5); br.stop(t + dur + 0.05);
+    }
+    A.forEach((fa, i) => {
+      const fb = B[i], bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+      bp.frequency.setValueAtTime(fa[0] * fk, t); bp.frequency.linearRampToValueAtTime(fb[0] * fk, t + dur * 0.85);
+      bp.Q.value = fa[0] / fa[1];
+      const gg = ctx.createGain(); gg.gain.value = fa[2] * 3.2;
+      vg.connect(bp); if (br) br._g.connect(bp); bp.connect(gg); gg.connect(out);
+    });
+    src.start(t); src.stop(t + dur + 0.05);
+  }
+  const VOICE = {
+    hum: (t, m) => voc(t, { male: m, v0: 'm', dur: 0.7, f0: [[0, 1], [0.35, 1.16], [1, 0.94]], vol: 0.16, vib: 5, breath: 0.03 }),
+    content: (t, m) => { voc(t, { male: m, v0: 'm', dur: 0.22, f0: [[0, 1], [1, 1.05]], vol: 0.14 }); voc(t + 0.3, { male: m, v0: 'm', dur: 0.4, f0: [[0, 1.02], [0.5, 1.22], [1, 1.12]], vol: 0.15, vib: 5 }); },
+    sigh: (t, m) => voc(t, { male: m, v0: 'a', v1: 'y', dur: 0.85, f0: [[0, 1.1], [1, 0.8]], vol: 0.12, voiced: 0.18, breath: 0.55, att: 0.35 }),
+    giggle: (t, m) => { for (let i = 0; i < 4; i++) voc(t + i * 0.13, { male: m, v0: 'i', v1: 'e', dur: 0.09, pitch: 1.55 - i * 0.07, f0: [[0, 1.05], [1, 0.95]], vol: 0.12, breath: 0.3 }); },
+    oh: (t, m) => voc(t, { male: m, v0: 'o', dur: 0.3, f0: [[0, 1], [1, 1.35]], vol: 0.13, breath: 0.1 }),
+    grumble: (t, m) => voc(t, { male: m, v0: 'y', v1: 'm', dur: 0.5, pitch: 0.82, f0: [[0, 1], [0.4, 1.05], [1, 0.74]], vol: 0.13, lp: 2400, breath: 0.08 }),
+    hmph: (t, m) => { voc(t, { male: m, v0: 'm', dur: 0.12, pitch: 0.95, vol: 0.06, voiced: 0.2, breath: 0.6 }); voc(t + 0.14, { male: m, v0: 'm', dur: 0.3, pitch: 0.9, f0: [[0, 1.1], [1, 0.8]], vol: 0.13 }); },
+    yelp: (t, m) => voc(t, { male: m, v0: 'a', v1: 'i', dur: 0.3, f0: [[0, 1.3], [0.25, 2.0], [1, 1.45]], vol: 0.18, att: 0.08, breath: 0.12 }),
+    ow: (t, m) => voc(t, { male: m, v0: 'u', v1: 'i', dur: 0.34, f0: [[0, 1.5], [0.3, 1.85], [1, 1.25]], vol: 0.17, att: 0.08, breath: 0.1 }),
+    hiss: (t, m) => voc(t, { male: m, v0: 'i', v1: 'i', dur: 0.42, pitch: 1.2, f0: [[0, 1], [1, 0.95]], vol: 0.1, voiced: 0.04, breath: 0.9, lp: 6000, att: 0.05 }),
+    grunt: (t, m) => voc(t, { male: m, v0: 'y', v1: 'a', dur: 0.2, pitch: 0.8, f0: [[0, 1.1], [0.3, 1.2], [1, 0.85]], vol: 0.2, att: 0.05, breath: 0.15, lp: 2600 }),
+    whimper: (t, m) => voc(t, { male: m, v0: 'u', v1: 'y', dur: 0.6, f0: [[0, 1.45], [1, 1.1]], vol: 0.09, vib: 7, breath: 0.15 }),
+  };
+  // kind — тип звука, g — пол ('m'/'f'), delay — задержка в секундах
+  function voice(kind, g, delay) { if (!ctx || !st.sfx || !VOICE[kind]) return; try { VOICE[kind](ctx.currentTime + 0.02 + (delay || 0), g === 'm'); } catch (e) { } }
   function sfx(name) { if (!ctx || !st.sfx) return; try { SFX[name] && SFX[name](); } catch (e) { } }
 
   // Мурчание: шум через полосовой фильтр, амплитуда модулируется частотой ~25 Гц (как у кошек),
@@ -187,7 +255,7 @@ const Audio_ = (() => {
     saveSt();
   }
   return {
-    st, unlock, sfx, purr,
+    st, unlock, sfx, purr, voice, VOICES: Object.keys(VOICE),
     setMusic(v) { st.music = v; apply(); }, setSfx(v) { st.sfx = v; apply(); }, setVol(v) { st.vol = v; apply(); },
     get ready() { return !!ctx; },
   };

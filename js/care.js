@@ -57,6 +57,7 @@ function failWhy(c, task) {
 
 // ---------- план дня (вместо простого «Завершить день?») ----------
 function dayPlanModal() {
+  applyAuto();
   const body = document.querySelector('#modal .modal-body'); const keep = body ? body.scrollTop : 0;
   let exp = 0, trainCost = 0;
   const rows = S.owned.map(c => {
@@ -74,7 +75,13 @@ function dayPlanModal() {
     if (inHeat(c) && c.heatCare !== S.day) warn.push('течка: сегодня без внимания — стресс +8 (погладьте или похвалите)');
     if (c.stress >= 80) warn.push('стресс 80+: лояльность падает');
     let line = '';
-    if (task === 'craft' || task === 'shop') {
+    if (task === 'salon' && !salonOk(c).ok) { const so = salonOk(c); warn.push('салон: ' + (so.block || 'нет согласия (охота ' + so.will + '/' + SALON_NEED + ')') + ' — будет отдыхать'); task = 'rest'; }
+    if (hasFault(c)) warn.push('провинил' + g(c, 'ся', 'ась') + ': ' + faultsOf(c)[0].t + ' — можно наказать по делу');
+    if (task === 'salon') {
+      const L = salonLine(c); exp += evOf(L.inf.v, L.fi.p);
+      if (L.so.reluct) warn.push('работает без охоты: симпатия −2, стресс +5');
+      line = `<div class="pr-l">${L.txt}</div>${failWhy(c, 'salon')}${salonWhy(c)}`;
+    } else if (task === 'craft' || task === 'shop') {
       const inf = incomeInfo(c, task), fi = failInfo(c, task);
       const e = inf.v * (1 - fi.p) + inf.v * 0.3 * fi.p; exp += e;
       const top = failTop(fi, 2).map(x => x[0].toLowerCase()).join(', ');
@@ -83,13 +90,14 @@ function dayPlanModal() {
       const fi = failInfo(c, 'train'); trainCost += TRAIN_COST;
       line = `<div class="pr-l">«${statName(c.trainStat)}» ×${trainInfo(c).mult.toFixed(2)} · −${TRAIN_COST} мон. · срыв <b>${Math.round(fi.p * 100)}%</b></div>${failWhy(c, 'train')}`;
     } else line = `<div class="pr-l muted">Отдых: усталость −${c.race === 'beast' ? 60 : 35}, стресс −20, здоровье +10</div>`;
-    return `<div class="plan-row"><div class="pr-p">${renderPortrait(c, 'sm')}</div><div class="pr-b"><b>${n}</b>
-      <div class="seg">${Object.entries(TASKS).map(([k, nm]) => `<button class="seg-b ${c.task === k ? 'on' : ''}" data-plantask="${k}" data-uid="${c.uid}">${nm}</button>`).join('')}</div>
+    return `<div class="plan-row"><div class="pr-p">${renderPortrait(c, 'sm')}</div><div class="pr-b"><b>${n}</b> ${autoToggleHtml(c)}
+      ${isAuto(c) && c.autoWhy ? `<div class="pr-auto">⚙ ${TASKS[c.task]}: ${esc(c.autoWhy)}</div>` : ''}
+      <div class="seg">${Object.entries(TASKS).map(([k, nm]) => `<button class="seg-b ${c.task === k ? 'on' : ''} ${k === 'salon' && !salonOk(c).ok ? 'off' : ''}" data-plantask="${k}" data-uid="${c.uid}">${nm}</button>`).join('')}</div>
       ${line}${warn.map(w => `<div class="pr-w">! ${w}</div>`).join('')}</div></div>`;
   }).join('');
   const up = upkeep(), cash = up.total - up.interest;
   const net = Math.round(exp - trainCost - cash);
-  showModal('План на завтра', `${rows || '<p class="muted">В поместье никого нет.</p>'}
+  showModal('План на завтра', `<div class="plan-auto">${autoAllHtml()}<span class="small muted">авто: отдых при усталости, стрессе, болезни, беременности и течке, иначе самое выгодное дело</span></div>${rows || '<p class="muted">В поместье никого нет.</p>'}
     <div class="plan-tot">Ожидаемый доход ≈ <b>+${Math.round(exp)}</b>${trainCost ? ` · учёба −${trainCost}` : ''} · содержание −${cash}${up.interest ? ` · проценты +${up.interest} к долгу` : ''}<br>Итог ≈ <b class="${net >= 0 ? 'pos' : 'neg'}">${net >= 0 ? '+' : ''}${fmt(net)}</b> мон. <span class="muted small">(с учётом шанса ошибок)</span></div>
     <div class="small muted">Ошибка — испорченная заготовка или просчёт у прилавка: остаётся 30% дохода. <a href="#" data-help="work">Как снизить шанс?</a></div>`,
     [{ label: 'Отмена', act: 'close' }, { label: 'Завершить день', cls: 'btn-primary', act: () => { closeModal(); endDay(); } }]);
@@ -257,6 +265,7 @@ function touch(uid, zone, side) {
     const t2 = c.loyalty >= 40 ? 'hi' : c.loyalty >= 22 ? 'mid' : 'lo';
     say(pick(TL_MARKET[t2]), t2 === 'lo' ? 'angry' : t2 === 'mid' ? 'surprised' : 'shy');
     Anim.touch(uid, zone, t2 === 'hi' ? 0.5 : 0.2, t2 !== 'lo', side); snd();
+    try { Audio_.voice(t2 === 'lo' ? 'hmph' : t2 === 'mid' ? 'oh' : 'giggle', c.g, 0.25); } catch (e) { }
     return;
   }
   const ts = touchState(c);
@@ -264,11 +273,12 @@ function touch(uid, zone, side) {
     stressGain(c, 2); c.aff = clamp((c.aff || 0) - 1);
     say(pick(TL[zone].lo), has(c, 'sensitive') ? 'sad' : 'angry');
     Anim.touch(uid, zone, 0, false, side); sfx('bad');
+    try { Audio_.voice(pick(['grumble', 'hmph']), c.g, 0.15); } catch (e) { }
     toast(`${fn1(c)} отстраняется: доверие ${T} из ${need} нужных («${Z.n}»). Стресс +2.`);
     save(); setTimeout(() => refreshCardStats(c), 50); return;
   }
   const f = touchLeft(c, zone); ts.n[zone] = (ts.n[zone] || 0) + 1; ts.total++;
-  if (f <= 0) { say(pick(TL_TIRED), 'sleepy'); Anim.touch(uid, zone, 0.1, true, side); toast(`«${Z.n}»: на сегодня хватит — эффект иссяк. Попробуйте другую зону.`); save(); return; }
+  if (f <= 0) { try { Audio_.voice('sigh', c.g, 0.2); } catch (e) { } say(pick(TL_TIRED), 'sleepy'); Anim.touch(uid, zone, 0.1, true, side); toast(`«${Z.n}»: на сегодня хватит — эффект иссяк. Попробуйте другую зону.`); save(); return; }
   const k = f * (tier === 'mid' ? 0.5 : 1), d = {};
   const fx = Z.fx;
   if (fx.mood) { d.mood = Math.round(fx.mood * k); c.moodMod += d.mood; }
@@ -285,6 +295,10 @@ function touch(uid, zone, side) {
   say(pick(pool), expr);
   const strength = clamp(T / 100, 0, 1) * (0.5 + 0.5 * f);
   Anim.touch(uid, zone, strength, true, side); snd();
+  try {
+    if (tier === 'mid') Audio_.voice(pick(['oh', 'hum']), c.g, 0.35);
+    else Audio_.voice(zone === 'cheek' || zone === 'tail' || zone === 'hand' ? pick(['giggle', 'content']) : zone === 'shoulder' || zone === 'back' ? pick(['sigh', 'hum']) : pick(['hum', 'content', 'sigh']), c.g, 0.4);
+  } catch (e) { }
   if (tier === 'hi') { setTimeout(() => sfx(cat && (zone === 'head' || zone === 'ears' || zone === 'tail') ? 'heart' : zone === 'cheek' || zone === 'tail' ? 'giggle' : 'heart'), 380); if (zone === 'head' || zone === 'ears' || zone === 'hair' || zone === 'back') try { Audio_.purr(strength, cat); } catch (e) { } }
   const parts = Object.entries(d).filter(([, v]) => v).map(([s2, v]) => `${FX_N[s2]} ${v > 0 ? '+' : '−'}${Math.abs(v)}`);
   toast(`${Z.n}: ${parts.join(', ') || 'без эффекта'}${k < 1 ? ` (эффект ${Math.round(k * 100)}%${tier === 'mid' ? ', смущается' : ''})` : ''}.`);
@@ -305,6 +319,7 @@ function placeZones() {
   const box = cp.querySelector('.art-box'); if (!box || box.querySelector('.tz')) return;
   const c = findAny(cp.dataset.uid); if (!c) return;
   const zg = Anim.zoneGeom(box.dataset.key, box.dataset.race); if (!zg) return;
+  if (UI.cardMode === 'punish' && findOwned(c.uid)) { box.insertAdjacentHTML('beforeend', punishZonesHtml(c, zg)); const o2 = cp.querySelector('.zones'); if (o2) o2.remove(); return; }
   const order = [['shoulderL', 'shoulder', -1], ['shoulderR', 'shoulder', 1], ['handL', 'hand', -1], ['handR', 'hand', 1], ['tail', 'tail', 1], ['hairL', 'hair', -1], ['hairR', 'hair', 1], ['cheekL', 'cheek', -1], ['cheekR', 'cheek', 1], ['head', 'head', 0], ['earL', 'ears', -1], ['earR', 'ears', 1]];
   const html = order.filter(([k]) => zg[k]).map(([k, z, sd]) => { const b = zg[k]; return `<div class="tz tz-${z}" data-touch="${z}" data-uid="${c.uid}" data-side="${sd}" title="${ZONES[z].n}" style="left:${b.x.toFixed(1)}%;top:${b.y.toFixed(1)}%;width:${b.w.toFixed(1)}%;height:${b.h.toFixed(1)}%"></div>`; }).join('');
   box.insertAdjacentHTML('beforeend', html);
@@ -537,5 +552,5 @@ document.addEventListener('click', e => {
   if (d.news != null) return newsModal();
   if (d.plan != null) return dayPlanModal();
   if (d.closeness) return closenessModal(d.closeness);
-  if (d.plantask) { const c = findOwned(d.uid); if (c && c.status === 'home') { c.task = d.plantask; save(); render(); dayPlanModal(); } }
+  if (d.plantask) { const c = findOwned(d.uid); if (c && c.status === 'home' && assignTask(c, d.plantask)) { save(); render(); dayPlanModal(); } }
 });
