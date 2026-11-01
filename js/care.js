@@ -100,8 +100,14 @@ function dayPlanModal() {
   showModal('План на завтра', `<div class="plan-auto">${autoAllHtml()}<span class="small muted">авто: отдых при усталости, стрессе, болезни, беременности и течке, иначе самое выгодное дело</span></div>${rows || '<p class="muted">В поместье никого нет.</p>'}
     <div class="plan-tot">Ожидаемый доход ≈ <b>+${Math.round(exp)}</b>${trainCost ? ` · учёба −${trainCost}` : ''} · содержание −${cash}${up.interest ? ` · проценты +${up.interest} к долгу` : ''}<br>Итог ≈ <b class="${net >= 0 ? 'pos' : 'neg'}">${net >= 0 ? '+' : ''}${fmt(net)}</b> мон. <span class="muted small">(с учётом шанса ошибок)</span></div>
     <div class="small muted">Ошибка — испорченная заготовка или просчёт у прилавка: остаётся 30% дохода. <a href="#" data-help="work">Как снизить шанс?</a></div>`,
-    [{ label: 'Отмена', act: 'close' }, { label: 'Завершить день', cls: 'btn-primary', act: () => { closeModal(); endDay(); } }]);
-  const nb = document.querySelector('#modal .modal-body'); if (nb) nb.scrollTop = keep;
+    [{ label: 'Отмена', act: 'close' }]);
+  // подтверждение — сверху, липкой полосой: видно сразу, без прокрутки списка
+  const nb = document.querySelector('#modal .modal-body');
+  if (nb) {
+    nb.insertAdjacentHTML('afterbegin', `<div class="plan-confirm"><button class="btn btn-primary" id="plan-go">Подтвердить и завершить день</button><small>Итог ≈ <b class="${net >= 0 ? 'pos' : 'neg'}">${net >= 0 ? '+' : ''}${fmt(net)}</b> мон.</small></div>`);
+    document.getElementById('plan-go').onclick = () => { closeModal(); endDay(); };
+    nb.scrollTop = keep;
+  }
 }
 
 // ---------- справка ----------
@@ -116,7 +122,7 @@ const HELP = [
   ['income', 'Доход', () => `<p>Доход за день = база по навыкам × множители (настроение, усталость, здоровье, черты, снаряжение, сезон, спрос в городе). Разбор множителей — в карточке, раздел «Прогноз».</p><p>В течку доход ×0.8, в положении ×0.5.</p>`],
   ['state', 'Настроение, стресс, усталость', () => `<p><b>Настроение</b> поднимают ласка, подарки, угощения и похвала. Ниже 35 — работа хуже и ошибки чаще.</p><p><b>Стресс</b> растёт от работы и строгости, снимается отдыхом и прикосновениями. Выше 80 — падает лояльность.</p><p><b>Усталость</b> растёт от дел. С 90 — здоровье −10 за день. Отдых снимает 35 (зверолюдям — 60).</p><p><b>Симпатия</b> — насколько персонажу нравитесь лично вы. Растёт от прикосновений и близости, нужна, чтобы получить согласие.</p>`],
   ['heat', 'Течка у зверолюдей', () => `<p>У женщин-зверолюдей примерно раз в <b>12 дней</b> наступает течка на <b>3 дня</b> (значок розового пламени, щёки горят).</p><ul><li>Нужно внимание: погладить, похвалить, подарить подарок или провести время вместе. Если за день никто не уделил внимания — <b>стресс +8, настроение −6</b>; если уделили — настроение +4.</li><li>Доход ×0.8, шанс ошибки +3%.</li><li>Прикосновения принимаются охотнее, пороги для близости ниже, согласие на свидание +20%, шанс беременности +15%.</li></ul><p>В положении течки нет.</p>`],
-  ['touch', 'Прикосновения', () => `<p>Коснитесь портрета: голова, уши (у зверолюдей и эльфов), щёки, волосы, плечи, руки, хвост (у зверолюдей). Спина — кнопкой под портретом. У каждой зоны свой эффект:</p>
+  ['touch', 'Прикосновения', () => `<p>Коснитесь портрета: голова, уши (у зверолюдей и эльфов), щёки, волосы, плечи, ладони, хвост (у зверолюдей), а у своих слуг ещё шея, ключицы, руки, пальчики, талия, животик, бёдра сбоку, коленки, икры и стопы (часть зон — только у женщин). Спина и пальчики — кнопками под портретом. У каждой зоны своя анимация, звук и реплики, у беременных — особые реплики про животик. У каждой зоны свой эффект:</p>
     <table class="help-t">${Object.entries(ZONES).map(([k, z]) => `<tr><td>${z.n}</td><td>${fxText(z.fx, 1)}</td></tr>`).join('')}</table>
     <p>Примут ли прикосновение, зависит от <b>доверия</b> = лояльность×0.5 + симпатия×0.3 + настроение×0.2 (в течку +10). Хвост, щёки и уши — более личные зоны. Если доверия мало — персонаж отстранится (стресс +2).</p>
     <p>Эффект в течение дня слабеет: 100% → 60% → 35% → 15% → 0 для каждой зоны; после 8 прикосновений за день всё действует вдвое слабее.</p>`],
@@ -172,6 +178,8 @@ function exprOf(c) {
 }
 function moodAnimKey(c) { return inHeat(c) ? 'heat' : moodKey(c); }
 
+// индивидуальная высота синтезированного голоса (0.88–1.12) — от uid персонажа
+function voicePk(c) { let h = 0; const u = String(c && c.uid || ''); for (let i = 0; i < u.length; i++) h = (h * 31 + u.charCodeAt(i)) >>> 0; return 0.88 + (h % 25) / 100; }
 // ---------- прикосновения ----------
 const ZONES = {
   head: { n: 'Голова', fx: { mood: 8, stress: -6, loy: 2, aff: 2 }, shy: 0, snd: 'rustle' },
@@ -181,16 +189,32 @@ const ZONES = {
   hair: { n: 'Волосы', fx: { mood: 6, stress: -4, aff: 2 }, shy: 2, snd: 'rustle' },
   shoulder: { n: 'Плечи', fx: { stress: -8, fat: -4, loy: 1 }, shy: -5, snd: 'knead' },
   back: { n: 'Спина', fx: { mood: 4, stress: -5, loy: 2 }, shy: -5, snd: 'pat' },
-  hand: { n: 'Рука', fx: { mood: 4, loy: 3, aff: 3 }, shy: 0, snd: 'warm' },
+  hand: { n: 'Ладонь', fx: { mood: 4, loy: 3, aff: 3 }, shy: 0, snd: 'warm' },
+  // v7: «бытовые» зоны тела — только у своих слуг; f — только у женщин. Грудь, ягодицы и пах не трогаем.
+  neck: { n: 'Шея', fx: { mood: 5, stress: -5, aff: 3 }, shy: 8, snd: 'rustle', body: 1 },
+  collar: { n: 'Ключицы', fx: { mood: 4, stress: -3, aff: 3 }, shy: 12, snd: 'rustle', body: 1, f: 1 },
+  arm: { n: 'Руки', fx: { mood: 3, stress: -4, fat: -3, loy: 1 }, shy: -3, snd: 'knead', body: 1 },
+  fingers: { n: 'Пальчики', fx: { mood: 3, fat: -2, aff: 3 }, shy: 0, snd: 'warm', body: 1 },
+  waist: { n: 'Талия', fx: { mood: 6, stress: -2, aff: 2 }, shy: 10, snd: 'giggle', body: 1, f: 1 },
+  belly: { n: 'Животик', fx: { mood: 6, stress: -4, aff: 4 }, shy: 14, snd: 'warm', body: 1, f: 1 },
+  thigh: { n: 'Бёдра сбоку', fx: { stress: -5, fat: -5, aff: 2 }, shy: 16, snd: 'knead', body: 1, f: 1 },
+  knee: { n: 'Коленки', fx: { mood: 5, stress: -2, aff: 2 }, shy: 6, snd: 'flick', body: 1 },
+  calf: { n: 'Икры', fx: { fat: -7, stress: -3 }, shy: 4, snd: 'knead', body: 1 },
+  foot: { n: 'Стопы', fx: { fat: -8, mood: 3, stress: -2 }, shy: 8, snd: 'squish', body: 1 },
 };
+// у беременных животик — самое доверенное место
+function zoneShy(c, z) { const Z = ZONES[z] || {}; return z === 'belly' && c.preg ? -6 : (Z.shy || 0); }
 const FX_N = { mood: 'настроение', stress: 'стресс', fat: 'усталость', loy: 'лояльность', aff: 'симпатия' };
 function fxText(fx, k) { return Object.entries(fx).map(([s, v]) => `${FX_N[s]} ${v > 0 ? '+' : '−'}${Math.abs(Math.round(v * k * 10) / 10)}`).join(', '); }
 const TOUCH_F = [1, 0.6, 0.35, 0.15, 0];
-function zonesFor(c) { return Object.keys(ZONES).filter(z => (z !== 'ears' || c.race === 'beast' || c.race === 'elf') && (z !== 'tail' || c.race === 'beast')); }
+function zonesFor(c) {
+  const owned = typeof findOwned === 'function' && !!findOwned(c.uid);
+  return Object.keys(ZONES).filter(z => (z !== 'ears' || c.race === 'beast' || c.race === 'elf') && (z !== 'tail' || c.race === 'beast') && (!ZONES[z].body || owned) && (!ZONES[z].f || c.g === 'f'));
+}
 function trustOf(c) { return Math.round(c.loyalty * 0.5 + (c.aff || 0) * 0.3 + mood(c) * 0.2 + (inHeat(c) ? 10 : 0)); }
 function touchTier(c, zone) {
-  const T = trustOf(c) - ((ZONES[zone] || {}).shy || 0) + (zone === 'ears' && c.race === 'beast' ? -3 : 0);
-  return { T, tier: T >= 55 ? 'hi' : T >= 35 ? 'mid' : 'lo', need: 35 + ((ZONES[zone] || {}).shy || 0) };
+  const T = trustOf(c) - zoneShy(c, zone) + (zone === 'ears' && c.race === 'beast' ? -3 : 0);
+  return { T, tier: T >= 55 ? 'hi' : T >= 35 ? 'mid' : 'lo', need: 35 + zoneShy(c, zone) };
 }
 function touchState(c) { if (!c.touch || c.touch.day !== S.day) c.touch = { day: S.day, n: {}, total: 0 }; return c.touch; }
 function touchLeft(c, zone) { const t = touchState(c); return TOUCH_F[Math.min(t.n[zone] || 0, TOUCH_F.length - 1)] * (t.total >= 8 ? 0.5 : 1); }
@@ -228,7 +252,49 @@ const TL = {
     hi: ['Ладонь у вас тёплая, {х}. Можно я подержу ещё?', '*переплетает пальцы и тут же краснеет* Простите, {х}… можно?', 'Куда прикажете, {х}, — туда и пойду.'],
     mid: ['Ой… руки у меня в муке, простите, {х}.', 'Как скажете, {х}.', '*осторожно сжимает ваши пальцы*'],
     lo: ['*руки дрожат* …Да, {х}.', 'Простите, {х}, я не смею.'] },
+  neck: {
+    hi: ['*склоняет голову набок, подставляя шею* Мурашки до самых пяток, {х}…', 'Ох, какие тёплые пальцы, {х}. Там всегда всё затекает.', 'М-м-м… вот так, {х}. Я сейчас усну стоя.', 'Хи-хи, щекотно у самого уха, {х}!'],
+    mid: ['*втягивает голову в плечи* Ой, щекотно, {х}!', 'Ш-шея? Как скажете, {х}…', '*замирает, ушки краснеют*'],
+    lo: ['*прикрывает шею ладонью* Простите, {х}… не надо.', '*отступает на шаг*'] },
+  collar: {
+    hi: ['*смущённо улыбается* Кулон съехал? Спасибо, что поправили, {х}.', 'У вас такие лёгкие пальцы, {х}… будто пёрышко.', '*прикрывает глаза и тихо смеётся* Щекотно, {х}.'],
+    mid: ['Ой… {х}, вы меня смущаете.', '*поправляет ворот и краснеет*'],
+    lo: ['*запахивает ворот* Простите, {х}.', '*напряжённо молчит*'] },
+  arm: {
+    hi: ['Руки гудят после работы — а вы будто знаете, {х}. Спасибо.', '*расслабляет плечи* От плеча до локтя — как новые, {х}.', 'Вот здесь, {х}… да-а, где корзины носил{|а}.'],
+    mid: ['Ой, руки у меня в царапинах, простите, {х}.', 'Спасибо, {х}… немножко затекли.'],
+    lo: ['*руки напряжены* Я… что-то не так сделал{|а}, {х}?', '*прячет руки за спину*'] },
+  fingers: {
+    hi: ['*переплетает пальчики с вашими* Можно так постоять, {х}?', 'Вы каждый пальчик разминаете… мне никто так не делал, {х}.', 'Хи-хи, щекотно в ладошке, {х}!'],
+    mid: ['Пальцы в муке, простите, {х}…', '*осторожно шевелит пальцами в вашей руке*'],
+    lo: ['*пальцы дрожат* …Да, {х}.', '*сжимает кулачок*'] },
+  waist: {
+    hi: ['Хи-хи-хи! {х}, щекотно! Ой, не могу!', '*смеётся и чуть изгибается* Вы нечестно играете, {х}!', 'Ой! Талия — самое щекотное место, {х}, вы знали?'],
+    mid: ['*подпрыгивает* Ай! Щекотно, {х}!', 'Ой… {х}, вы меня смешите.'],
+    lo: ['*отстраняется* Не надо, {х}…', '*ёжится и отводит глаза*'] },
+  belly: {
+    hi: ['*хихикает* Животик урчит — это от пряника, {х}, честное слово!', 'М-м-м… тёпленько, {х}. Как грелка.', '*кладёт ладонь поверх вашей* Хорошо так, {х}.'],
+    mid: ['Ой, щекотно! {х}, я только поел{|а}…', '*втягивает живот и краснеет*'],
+    lo: ['*прикрывает живот руками* Простите, {х}…', '*напрягается и отводит взгляд*'] },
+  thigh: {
+    hi: ['Ноги гудят после рынка — спасибо, {х}, так легче.', '*переминается и улыбается* Целый день на ногах, {х}… а теперь как пёрышко.'],
+    mid: ['Ой… {х}, вы меня смущаете.', '*одёргивает подол и краснеет*'],
+    lo: ['*отступает* Не надо, {х}, пожалуйста.', '*прячется за подол*'] },
+  knee: {
+    hi: ['Хи-хи! Коленки — это нечестно, {х}!', '*дёргает ногой и смеётся* Ой, щекотно же, {х}!', 'Я в детстве всё время коленки разбивал{|а}, {х}… а теперь их гладят.'],
+    mid: ['Ай! Коленка сама дёрнулась, простите, {х}!', '*смущённо хихикает*'],
+    lo: ['*сжимает колени* Простите, {х}…', '*напряжённо замирает*'] },
+  calf: {
+    hi: ['О-о… икры после лестниц — как камень, {х}. Спасибо.', 'Вот здесь, {х}… ноги аж поют.', '*блаженно щурится* Завтра обегу весь рынок, {х}.'],
+    mid: ['Ой, ноги гудят… спасибо, {х}.', 'Как скажете, {х}…'],
+    lo: ['*поджимает ногу* Простите, {х}.', '*не шевелится*'] },
+  foot: {
+    hi: ['Хи-хи-хи! Пятки щекотные, {х}! Ой, нет, продолжайте…', 'Целый день в башмаках — а вы как знали, {х}. Спасибо!', '*шевелит пальчиками ног* Блаженство, {х}…'],
+    mid: ['Ой! Щекотно! {х}, ноги же пыльные…', '*поджимает пальцы и смеётся*'],
+    lo: ['*прячет ноги* Не надо, {х}…', '*съёживается*'] },
 };
+// беременным — свои реплики про животик
+const TL_PREG_BELLY = ['*кладёт вашу ладонь пониже* Чувствуете? Толкается, {х}!', 'Малыш затих — слушает вас, {х}.', 'Тёплые руки… ему нравится, {х}. И мне.', 'Ещё немножко, {х}, — и мы с животиком будем огромные.'];
 const TL_TRAIT = {
   charming: ['Вам нравится, {х}? Я так хотел{|а} вам понравиться.', 'Ласка ваших рук — лучшая награда, {х}.'],
   stubborn: ['Признаю, {х}… это приятно. Только никому не говорите, ладно?', '*сдаётся и улыбается* Вы победили, {х}.'],
@@ -248,14 +314,16 @@ const TL_MARKET = {
   lo: ['*отшатывается* Простите, {г}…', 'Пожалуйста, не надо, {г}.'],
 };
 const T_EXPR = {
-  hi: { head: 'happy', ears: 'flushed', tail: 'flushed', cheek: 'shy', hair: 'happy', shoulder: 'sleepy', back: 'happy', hand: 'shy' },
-  mid: { head: 'shy', ears: 'surprised', tail: 'surprised', cheek: 'shy', hair: 'surprised', shoulder: 'happy', back: 'surprised', hand: 'shy' },
+  hi: { head: 'happy', ears: 'flushed', tail: 'flushed', cheek: 'shy', hair: 'happy', shoulder: 'sleepy', back: 'happy', hand: 'shy', neck: 'sleepy', collar: 'shy', arm: 'happy', fingers: 'shy', waist: 'happy', belly: 'happy', thigh: 'happy', knee: 'happy', calf: 'sleepy', foot: 'happy' },
+  mid: { head: 'shy', ears: 'surprised', tail: 'surprised', cheek: 'shy', hair: 'surprised', shoulder: 'happy', back: 'surprised', hand: 'shy', neck: 'surprised', collar: 'shy', arm: 'shy', fingers: 'shy', waist: 'surprised', belly: 'shy', thigh: 'shy', knee: 'surprised', calf: 'shy', foot: 'surprised' },
 };
+const ZONE_VOICE = { neck: ['sigh', 'mmm', 'hum'], collar: ['giggle', 'mmm'], arm: ['sigh', 'content'], fingers: ['giggle', 'hum', 'content'], waist: ['giggle', 'giggle', 'laugh'], belly: ['mmm', 'giggle', 'content'], thigh: ['sigh', 'content'], knee: ['giggle', 'laugh'], calf: ['sigh', 'mmm', 'content'], foot: ['laugh', 'giggle', 'sigh'] };
 function touch(uid, zone, side) {
   const c = findAny(uid); if (!c) return;
   const owned = !!findOwned(uid);
   if (zone === 'ears' && c.race !== 'beast' && c.race !== 'elf') zone = 'head';
   if (zone === 'tail' && c.race !== 'beast') zone = 'back';
+  if (!ZONES[zone] || !zonesFor(c).includes(zone)) zone = ZONES[zone] && ZONES[zone].body ? 'hand' : 'head';
   const Z = ZONES[zone] || ZONES.head;
   const { T, tier, need } = touchTier(c, zone);
   const cat = c.race === 'beast';
@@ -265,7 +333,7 @@ function touch(uid, zone, side) {
     const t2 = c.loyalty >= 40 ? 'hi' : c.loyalty >= 22 ? 'mid' : 'lo';
     say(pick(TL_MARKET[t2]), t2 === 'lo' ? 'angry' : t2 === 'mid' ? 'surprised' : 'shy');
     Anim.touch(uid, zone, t2 === 'hi' ? 0.5 : 0.2, t2 !== 'lo', side); snd();
-    try { Audio_.voice(t2 === 'lo' ? 'hmph' : t2 === 'mid' ? 'oh' : 'giggle', c.g, 0.25); } catch (e) { }
+    try { Audio_.voice(t2 === 'lo' ? 'hmph' : t2 === 'mid' ? 'oh' : 'giggle', c.g, 0.25, voicePk(c)); } catch (e) { }
     return;
   }
   const ts = touchState(c);
@@ -273,12 +341,12 @@ function touch(uid, zone, side) {
     stressGain(c, 2); c.aff = clamp((c.aff || 0) - 1);
     say(pick(TL[zone].lo), has(c, 'sensitive') ? 'sad' : 'angry');
     Anim.touch(uid, zone, 0, false, side); sfx('bad');
-    try { Audio_.voice(pick(['grumble', 'hmph']), c.g, 0.15); } catch (e) { }
+    try { Audio_.voice(pick(['grumble', 'hmph']), c.g, 0.15, voicePk(c)); } catch (e) { }
     toast(`${fn1(c)} отстраняется: доверие ${T} из ${need} нужных («${Z.n}»). Стресс +2.`);
     save(); setTimeout(() => refreshCardStats(c), 50); return;
   }
   const f = touchLeft(c, zone); ts.n[zone] = (ts.n[zone] || 0) + 1; ts.total++;
-  if (f <= 0) { try { Audio_.voice('sigh', c.g, 0.2); } catch (e) { } say(pick(TL_TIRED), 'sleepy'); Anim.touch(uid, zone, 0.1, true, side); toast(`«${Z.n}»: на сегодня хватит — эффект иссяк. Попробуйте другую зону.`); save(); return; }
+  if (f <= 0) { try { Audio_.voice('sigh', c.g, 0.2, voicePk(c)); } catch (e) { } say(pick(TL_TIRED), 'sleepy'); Anim.touch(uid, zone, 0.1, true, side); toast(`«${Z.n}»: на сегодня хватит — эффект иссяк. Попробуйте другую зону.`); save(); return; }
   const k = f * (tier === 'mid' ? 0.5 : 1), d = {};
   const fx = Z.fx;
   if (fx.mood) { d.mood = Math.round(fx.mood * k); c.moodMod += d.mood; }
@@ -288,16 +356,17 @@ function touch(uid, zone, side) {
   if (fx.aff) { d.aff = Math.round(fx.aff * k * 10) / 10; c.aff = clamp((c.aff || 0) + d.aff); }
   c.heatCare = S.day;
   let pool = TL[zone][tier].slice();
-  if (tier === 'hi') { for (const t of c.traits) if (TL_TRAIT[t] && R() < 0.5) pool.push(...TL_TRAIT[t]); if (inHeat(c)) pool = pool.concat(TL_HEAT, TL_HEAT); }
+  if (tier === 'hi' && !Z.body) { for (const t of c.traits) if (TL_TRAIT[t] && R() < 0.5) pool.push(...TL_TRAIT[t]); if (inHeat(c)) pool = pool.concat(TL_HEAT, TL_HEAT); }
+  if (zone === 'belly' && c.preg) pool = TL_PREG_BELLY.slice();
   let expr = (T_EXPR[tier] || T_EXPR.mid)[zone];
-  if (inHeat(c) && tier === 'hi') expr = 'flushed';
+  if (inHeat(c) && tier === 'hi' && !Z.body) expr = 'flushed';
   if (tier === 'hi' && (has(c, 'charming') || has(c, 'cheerful')) && R() < 0.3) expr = 'wink';
   say(pick(pool), expr);
   const strength = clamp(T / 100, 0, 1) * (0.5 + 0.5 * f);
   Anim.touch(uid, zone, strength, true, side); snd();
   try {
-    if (tier === 'mid') Audio_.voice(pick(['oh', 'hum']), c.g, 0.35);
-    else Audio_.voice(zone === 'cheek' || zone === 'tail' || zone === 'hand' ? pick(['giggle', 'content']) : zone === 'shoulder' || zone === 'back' ? pick(['sigh', 'hum']) : pick(['hum', 'content', 'sigh']), c.g, 0.4);
+    if (tier === 'mid') Audio_.voice(pick(['oh', 'hum']), c.g, 0.35, voicePk(c));
+    else Audio_.voice(ZONE_VOICE[zone] ? pick(ZONE_VOICE[zone]) : zone === 'cheek' || zone === 'tail' || zone === 'hand' ? pick(['giggle', 'content']) : zone === 'shoulder' || zone === 'back' ? pick(['sigh', 'hum']) : pick(['hum', 'content', 'sigh']), c.g, 0.4, voicePk(c));
   } catch (e) { }
   if (tier === 'hi') { setTimeout(() => sfx(cat && (zone === 'head' || zone === 'ears' || zone === 'tail') ? 'heart' : zone === 'cheek' || zone === 'tail' ? 'giggle' : 'heart'), 380); if (zone === 'head' || zone === 'ears' || zone === 'hair' || zone === 'back') try { Audio_.purr(strength, cat); } catch (e) { } }
   const parts = Object.entries(d).filter(([, v]) => v).map(([s2, v]) => `${FX_N[s2]} ${v > 0 ? '+' : '−'}${Math.abs(v)}`);
@@ -320,8 +389,10 @@ function placeZones() {
   const c = findAny(cp.dataset.uid); if (!c) return;
   const zg = Anim.zoneGeom(box.dataset.key, box.dataset.race); if (!zg) return;
   if (UI.cardMode === 'punish' && findOwned(c.uid)) { box.insertAdjacentHTML('beforeend', punishZonesHtml(c, zg)); const o2 = cp.querySelector('.zones'); if (o2) o2.remove(); return; }
-  const order = [['shoulderL', 'shoulder', -1], ['shoulderR', 'shoulder', 1], ['handL', 'hand', -1], ['handR', 'hand', 1], ['tail', 'tail', 1], ['hairL', 'hair', -1], ['hairR', 'hair', 1], ['cheekL', 'cheek', -1], ['cheekR', 'cheek', 1], ['head', 'head', 0], ['earL', 'ears', -1], ['earR', 'ears', 1]];
-  const html = order.filter(([k]) => zg[k]).map(([k, z, sd]) => { const b = zg[k]; return `<div class="tz tz-${z}" data-touch="${z}" data-uid="${c.uid}" data-side="${sd}" title="${ZONES[z].n}" style="left:${b.x.toFixed(1)}%;top:${b.y.toFixed(1)}%;width:${b.w.toFixed(1)}%;height:${b.h.toFixed(1)}%"></div>`; }).join('');
+  const allowed = new Set(zonesFor(c));
+  const order = [['footL', 'foot', -1], ['footR', 'foot', 1], ['calfL', 'calf', -1], ['calfR', 'calf', 1], ['kneeL', 'knee', -1], ['kneeR', 'knee', 1], ['thighL', 'thigh', -1], ['thighR', 'thigh', 1], ['belly', 'belly', 0], ['waistL', 'waist', -1], ['waistR', 'waist', 1], ['armL', 'arm', -1], ['armR', 'arm', 1], ['collarL', 'collar', -1], ['collarR', 'collar', 1], ['neck', 'neck', 0],
+    ['shoulderL', 'shoulder', -1], ['shoulderR', 'shoulder', 1], ['handL', 'hand', -1], ['handR', 'hand', 1], ['tail', 'tail', 1], ['hairL', 'hair', -1], ['hairR', 'hair', 1], ['cheekL', 'cheek', -1], ['cheekR', 'cheek', 1], ['head', 'head', 0], ['earL', 'ears', -1], ['earR', 'ears', 1]];
+  const html = order.filter(([k, z]) => zg[k] && (allowed.has(z) || z === 'hand' || z === 'head' || z === 'shoulder' || z === 'hair' || z === 'cheek')).map(([k, z, sd]) => { const b = zg[k]; return `<div class="tz tz-${z}" data-touch="${z}" data-uid="${c.uid}" data-side="${sd}" title="${ZONES[z].n}" style="left:${b.x.toFixed(1)}%;top:${b.y.toFixed(1)}%;width:${b.w.toFixed(1)}%;height:${b.h.toFixed(1)}%"></div>`; }).join('');
   box.insertAdjacentHTML('beforeend', html);
   const old = cp.querySelector('.zones'); if (old) old.remove();
 }
@@ -590,10 +661,13 @@ function closenessResult(uid, score, miss, G) {
   if (CLOSE_SCENE[c.race]) pool.push(...CLOSE_SCENE[c.race]);
   if (heat) pool = CLOSE_SCENE.heat.concat(CLOSE_SCENE.heat, pool);
   const nm = esc(fn1(c));
-  const scene = gx(c, pick(pool)).replace(/\{n\}/g, nm), morn = gx(c, pick(CLOSE_MORNING)).replace(/\{n\}/g, nm).replace('Уши/щёки', c.race === 'beast' ? 'Уши' : 'Щёки');
+  c.closeN = (c.closeN || 0) + 1;
+  let scene, morn;
+  if (typeof closeScene === 'function') ({ scene, morn } = closeScene(c, heat, k));
+  else { scene = gx(c, pick(pool)).replace(/\{n\}/g, nm) + '</p><p class="muted">…'; morn = gx(c, pick(CLOSE_MORNING)).replace(/\{n\}/g, nm).replace('Уши/щёки', c.race === 'beast' ? 'Уши' : 'Щёки'); }
   addLog(`Вечер наедине с ${fn1(c)}.${yes ? ' Беременность!' : ''}`);
   sfx(yes ? 'sparkle' : 'heart');
-  showModal('Вечер вдвоём', `<div class="fade-scene"><p>${scene}</p><p class="muted">…</p><p>${morn}</p></div>
+  showModal('Вечер вдвоём', `<div class="fade-scene"><p>${scene}</p><p class="cs-morn">${morn}</p></div>
     <div class="small">${G ? `Ходов: <b>${G.strokes}</b>, до донышка: <b>${G.deep}</b>, ритм <b>${Math.round(G.rhythm * 100)}%</b>, очков ${G.pts}${miss ? `, мимо горлышка: ${miss}` : ''}` : `Оценка: <b>${score}</b>`} → эффект ×${k.toFixed(2)}</div>
     <div class="mchips"><span class="mchip up">симпатия +${da}</span><span class="mchip up">настроение +${dm}</span><span class="mchip up">стресс −${ds}</span>${dl ? `<span class="mchip up">лояльность +${dl}</span>` : ''}<span class="mchip down">усталость +5</span></div>${pregTxt}`,
     [{ label: 'Доброе утро', cls: 'btn-primary', act: 'close' }]);

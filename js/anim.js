@@ -177,7 +177,7 @@ const Anim = (() => {
 
   // ---------- действия (реакции) ----------
   // play('headpat' | 'ears' | 'tail' | 'cheek' | 'shoulder' | 'back' | 'hand' | 'hair' | 'flinch' | 'bounce' | 'shake' | 'nod' | 'yawn' | 'sway')
-  const ACT_DUR = { headpat: 2.4, ears: 1.6, tail: 2.2, cheek: 1.8, shoulder: 2.2, back: 1.4, hand: 2.4, hair: 2.6, flinch: 0.9, bounce: 1.1, shake: 1.0, nod: 1.0, yawn: 2.2, sway: 3.2 };
+  const ACT_DUR = { neck: 2.2, collar: 1.8, arm: 2.2, giggle: 1.6, belly: 2.4, leg: 2.2, knee: 1.4, foot: 1.6, headpat: 2.4, ears: 1.6, tail: 2.2, cheek: 1.8, shoulder: 2.2, back: 1.4, hand: 2.4, hair: 2.6, flinch: 0.9, bounce: 1.1, shake: 1.0, nod: 1.0, yawn: 2.2, sway: 3.2 };
   function play(name, opts = {}) {
     const c = cur; if (!c) return;
     const now = performance.now();
@@ -223,6 +223,14 @@ const Anim = (() => {
         case 'shake': tilt += Math.sin(k * Math.PI * 6) * 0.4 * e; break;
         case 'nod': nod += Math.sin(k * Math.PI * 4) * 0.6 * e; break;
         case 'yawn': nod -= 0.6 * e; shrug += 0.5 * e; armL -= 0.3 * e; armR += 0.3 * e; squint = Math.max(squint, e); break;
+        case 'neck': tilt += sd * 0.45 * e; shrug += 0.55 * e; squint = Math.max(squint, 0.5 * e); break;
+        case 'collar': shrug += 0.7 * e; nod += 0.25 * e; tilt += -sd * 0.15 * e; squint = Math.max(squint, 0.3 * e); break;
+        case 'arm': if (sd < 0) armL += -0.7 * e; else armR += 0.7 * e; tilt += sd * 0.12 * e; lean += 0.1 * e; break;
+        case 'giggle': { const w = Math.sin(k * Math.PI * 9) * e; hip += -sd * 0.6 * e + w * 0.25; shrug += 0.5 * e; tilt += w * 0.12; squint = Math.max(squint, 0.6 * e); armL += -0.3 * e; armR += 0.3 * e; break; }
+        case 'belly': lean += -0.25 * e; nod += 0.35 * e; squish += 0.25 * Math.abs(Math.sin(k * Math.PI * 3)) * e; hip += Math.sin(k * Math.PI * 2) * 0.3 * e; squint = Math.max(squint, 0.4 * e); break;
+        case 'leg': hip += sd * 0.75 * e; tilt += -sd * 0.12 * e; lean += 0.12 * e; break;
+        case 'knee': { const w = Math.sin(k * Math.PI * 6) * e; hip += w * 0.7; squish += 0.3 * Math.abs(w); shrug += 0.35 * e; squint = Math.max(squint, 0.6 * e); break; }
+        case 'foot': { const w = Math.sin(k * Math.PI * 8) * e; squish += 0.45 * Math.abs(w); tilt += w * 0.2; shrug += 0.4 * e; hip += -sd * 0.4 * e; squint = Math.max(squint, 0.7 * e); break; }
         case 'sway': hip += Math.sin(k * Math.PI * 2) * 0.9 * e; tilt += Math.sin(k * Math.PI * 2 + 1) * 0.2 * e; tailT += Math.sin(k * Math.PI * 4) * 0.6 * e; break;
       }
     }
@@ -392,6 +400,27 @@ const Anim = (() => {
     z.shoulderR = box(bcx + hw * 0.62, sh + 0.012, hw * 0.4, headHf * 0.3);
     if (r) { z.handL = box(r.hands[0][0] - 0.01, r.hands[0][1], hw * 0.42, headHf * 0.36); z.handR = box(r.hands[1][0] + 0.01, r.hands[1][1], hw * 0.42, headHf * 0.36); }
     else { z.handL = box(cx - hw * 0.9, 0.5, hw * 0.4, headHf * 0.35); z.handR = box(cx + hw * 0.9, 0.5, hw * 0.4, headHf * 0.35); }
+    // v7: зоны тела (без груди, ягодиц и паха): шея, ключицы, руки, талия, животик, бёдра сбоку, колени, икры, стопы
+    const cr = r ? r.cr : 0.52, legH = Math.max(0.2, 1 - cr), torso = Math.max(0.12, cr - sh);
+    z.neck = box(cx, (top + headHf * 0.95 + sh) / 2, hw * 0.26, Math.max(0.018, sh - top - headHf * 0.95));
+    z.collarL = box(bcx - hw * 0.17, sh + headHf * 0.1, hw * 0.24, headHf * 0.12);
+    z.collarR = box(bcx + hw * 0.17, sh + headHf * 0.1, hw * 0.24, headHf * 0.12);
+    const hL = r ? r.hands[0] : [cx - hw * 0.9, 0.5], hR = r ? r.hands[1] : [cx + hw * 0.9, 0.5];
+    const lerp = (a, b, t) => a + (b - a) * t;
+    z.armL = box(lerp(bcx - hw * 0.72, hL[0], 0.45), lerp(sh + 0.02, hL[1], 0.42), hw * 0.26, (hL[1] - sh) * 0.26);
+    z.armR = box(lerp(bcx + hw * 0.72, hR[0], 0.45), lerp(sh + 0.02, hR[1], 0.42), hw * 0.26, (hR[1] - sh) * 0.26);
+    z.waistL = box(bcx - hw * 0.34, sh + torso * 0.6, hw * 0.18, torso * 0.16);
+    z.waistR = box(bcx + hw * 0.34, sh + torso * 0.6, hw * 0.18, torso * 0.16);
+    z.belly = box(bcx, sh + torso * 0.74, hw * 0.44, torso * 0.2);
+    z.thighL = box(bcx - hw * 0.36, cr + legH * 0.14, hw * 0.2, legH * 0.16);
+    z.thighR = box(bcx + hw * 0.36, cr + legH * 0.14, hw * 0.2, legH * 0.16);
+    z.kneeL = box(bcx - hw * 0.19, cr + legH * 0.43, hw * 0.28, legH * 0.1);
+    z.kneeR = box(bcx + hw * 0.19, cr + legH * 0.43, hw * 0.28, legH * 0.1);
+    z.calfL = box(bcx - hw * 0.19, cr + legH * 0.65, hw * 0.28, legH * 0.14);
+    z.calfR = box(bcx + hw * 0.19, cr + legH * 0.65, hw * 0.28, legH * 0.14);
+    z.footL = box(bcx - hw * 0.2, 0.955, hw * 0.32, 0.05);
+    z.footR = box(bcx + hw * 0.2, 0.955, hw * 0.32, 0.05);
+    z.fingersL = z.handL; z.fingersR = z.handR;
     if (race === 'beast') {
       if (r && r.tail) { const T = r.tail; z.tail = box((T.x + T.w * 0.6) / m.w, (T.y + T.h * 0.55) / m.h, Math.min(0.3, T.w / m.w), Math.min(0.25, T.h / m.h * 0.7)); }
       else z.tail = box(bcx + hw * 0.95, (r ? r.cr : 0.55) - 0.03, hw * 0.4, headHf * 0.4);
@@ -402,24 +431,25 @@ const Anim = (() => {
   // ---------- прикосновение: рука, эффект и движение тела ----------
   const HAND = `<svg viewBox="0 0 64 64"><path d="M14 40 C10 30 12 22 18 22 L20 24 L20 12 C20 8 26 8 26 12 L26 22 L27 8 C27 4 33 4 33 8 L33 22 L35 10 C35 6 41 6 41 10 L40 24 L43 16 C44 12 50 13 49 17 L46 34 C45 46 38 54 28 54 C21 54 17 48 14 40 Z" fill="#f6d2b0" stroke="#3b2616" stroke-width="2.4" stroke-linejoin="round"/><path d="M26 22 L26 30 M33 22 L33 30 M40 24 L39 31" stroke="#c9946a" stroke-width="1.6" stroke-linecap="round"/></svg>`;
   const HEART = `<svg viewBox="0 0 24 24"><path d="M12 21 C4 15 2 10 4.5 6.5 C7 3.5 11 4.5 12 8 C13 4.5 17 3.5 19.5 6.5 C22 10 20 15 12 21 Z" fill="#e8707a" stroke="#8a2a3a" stroke-width="1.5"/></svg>`;
-  const ZONE_ACT = { head: 'headpat', ears: 'ears', tail: 'tail', cheek: 'cheek', shoulder: 'shoulder', back: 'back', hand: 'hand', hair: 'hair' };
-  const HAND_MOTION = { head: 'stroke', hair: 'comb', ears: 'rub', tail: 'stroke', cheek: 'pinch', shoulder: 'knead', back: 'pat', hand: 'hold' };
+  const ZONE_ACT = { head: 'headpat', ears: 'ears', tail: 'tail', cheek: 'cheek', shoulder: 'shoulder', back: 'back', hand: 'hand', hair: 'hair', neck: 'neck', collar: 'collar', arm: 'arm', fingers: 'hand', waist: 'giggle', belly: 'belly', thigh: 'leg', knee: 'knee', calf: 'leg', foot: 'foot' };
+  const HAND_MOTION = { head: 'stroke', hair: 'comb', ears: 'rub', tail: 'stroke', cheek: 'pinch', shoulder: 'knead', back: 'pat', hand: 'hold', neck: 'trace', collar: 'trace', arm: 'slide', fingers: 'knead', waist: 'tickle', belly: 'circle', thigh: 'slide', knee: 'tickle', calf: 'knead', foot: 'tickle' };
+  const CENTER_Z = { head: 1, back: 1, neck: 1, belly: 1 };
   function touch(uid, zone, strength, liked, side) {
     const cp = document.querySelector(`.card-portrait[data-uid="${uid}"]`); if (!cp) return;
     const box = cp.querySelector('.art-box'); if (!box) return;
     const meta = ART_META[box.dataset.key]; if (!meta) return;
     const zg = zoneGeom(box.dataset.key, box.dataset.race) || {};
     const sd = side || (Math.random() < 0.5 ? -1 : 1);
-    const zk = zone === 'head' || zone === 'back' ? 'head' : zone + (sd < 0 ? 'L' : 'R');
+    const zk = zone === 'back' ? 'head' : CENTER_Z[zone] ? zone : zone + (sd < 0 ? 'L' : 'R');
     let g = zg[zk] || zg[zone + 'L'] || zg.head;
     if (zone === 'back') g = { x: zg.shoulderL.x, y: zg.shoulderL.y + 3, w: zg.shoulderR.x + zg.shoulderR.w - zg.shoulderL.x, h: zg.shoulderL.h };
     const hx = g.x + g.w / 2, hy = g.y + g.h / 2, hw = meta.hw * 100;
     const fx = document.createElement('div'); fx.className = 'pet-fx';
     const dur = liked ? 1.5 + strength * 1.4 : 1.0;
-    const blush = (zone === 'cheek' || zone === 'head' || zone === 'ears' || zone === 'hand' || zone === 'tail' || zone === 'hair') && liked;
+    const blush = /^(cheek|head|ears|hand|tail|hair|neck|collar|fingers|waist|belly|thigh|knee|foot)$/.test(zone) && liked;
     const headHf = meta.hw * 1.25 * meta.w / meta.h * 100;
     const ey = meta.eyes ? (meta.eyes[0][1] + meta.eyes[1][1]) / 2 * 100 : meta.top * 100 + headHf * 0.5;
-    fx.innerHTML = `<div class="pet-hand hm-${HAND_MOTION[zone] || 'stroke'}${sd > 0 ? ' flip' : ''}" style="left:${hx}%;top:${hy}%;width:${hw * (zone === 'hand' || zone === 'cheek' ? 0.7 : 0.9)}%;--d:${dur}s">${HAND}</div>
+    fx.innerHTML = `<div class="pet-hand hm-${HAND_MOTION[zone] || 'stroke'}${sd > 0 ? ' flip' : ''}" style="left:${hx}%;top:${hy}%;width:${hw * (zone === 'hand' || zone === 'cheek' || zone === 'fingers' || zone === 'neck' || zone === 'collar' ? 0.7 : 0.9)}%;--d:${dur}s">${HAND}</div>
       <div class="pet-ripple" style="left:${hx}%;top:${hy}%;width:${hw * 0.9}%"></div>
       ${blush ? `<div class="pet-blush" style="left:${meta.cx * 100 - hw * 0.19}%;top:${ey + headHf * 0.14}%;width:${hw * 0.2}%"></div>
       <div class="pet-blush" style="left:${meta.cx * 100 + hw * 0.19}%;top:${ey + headHf * 0.14}%;width:${hw * 0.2}%"></div>` : ''}
@@ -433,5 +463,5 @@ const Anim = (() => {
   function pet(uid, strength, liked) { touch(uid, 'head', strength, liked); }
   function setMood(md) { if (cur) { cur.md = md; cur.droop = md === 'tired' ? 1 : md === 'sad' ? 0.6 : 0; } }
   function redecorate() { if (cur) decorate(cur.box, cur.meta); }
-  return { mount, stop, pet, touch, play, setExpr, setMood, zoneGeom, redecorate, enabled, setEnabled, ease };
+  return { mount, stop, pet, touch, play, setExpr, setMood, zoneGeom, redecorate, enabled, setEnabled, ease, EMO_SVG: EMO };
 })();

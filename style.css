@@ -648,3 +648,24 @@ details.why td small { display: block; font-size: 10.5px; opacity: .7; font-weig
 .welts { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
 .welt { position: absolute; width: 13%; aspect-ratio: 4/3; filter: blur(.6px); mix-blend-mode: multiply; transition: opacity .4s; }
 .welt svg { width: 100%; height: 100%; display: block; }
+/* v7: новые движения руки, значок беременности, липкая кнопка плана */
+.pet-hand.hm-slide { animation-name: hmSlide; }
+.pet-hand.hm-trace { animation-name: hmTrace; }
+.pet-hand.hm-circle { animation-name: hmCircle; }
+.pet-hand.hm-tickle { animation-name: hmTickle; }
+@keyframes hmSlide { 0% { opacity: 0; transform: translate(-50%, -110%) } 15% { opacity: 1 } 45% { transform: translate(-50%, -30%) } 60% { transform: translate(-50%, -100%) } 88% { opacity: 1; transform: translate(-50%, -30%) } 100% { opacity: 0 } }
+@keyframes hmTrace { 0% { opacity: 0; transform: translate(-90%, -60%) } 15% { opacity: 1 } 45% { transform: translate(-10%, -60%) } 70% { transform: translate(-90%, -60%) } 88% { opacity: 1 } 100% { opacity: 0; transform: translate(-30%, -60%) } }
+@keyframes hmCircle { 0% { opacity: 0; transform: translate(-50%, -80%) } 12% { opacity: 1 } 25% { transform: translate(-20%, -60%) } 40% { transform: translate(-50%, -40%) } 55% { transform: translate(-80%, -60%) } 70% { transform: translate(-50%, -80%) } 85% { opacity: 1; transform: translate(-20%, -60%) } 100% { opacity: 0 } }
+@keyframes hmTickle { 0% { opacity: 0; transform: translate(-50%, -70%) rotate(0) } 12% { opacity: 1 } 20%, 40%, 60%, 80% { transform: translate(-45%, -64%) rotate(-8deg) } 30%, 50%, 70% { transform: translate(-55%, -74%) rotate(8deg) } 92% { opacity: 1 } 100% { opacity: 0 } }
+.preg-badge { position: absolute; right: 6%; top: 38%; width: 40px; z-index: 6; display: flex; flex-direction: column; align-items: center; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+.preg-badge svg { width: 40px; height: 40px; }
+.preg-badge b { font-size: 11px; color: #fff; background: #b05a78; border-radius: 8px; padding: 0 5px; margin-top: -4px; }
+.plan-confirm { position: sticky; top: -1px; z-index: 5; margin: -4px -4px 10px; padding: 8px; background: linear-gradient(#f6e7c6, #f1dfb8); border-bottom: 2px solid #c9a060; box-shadow: 0 4px 8px rgba(60,35,10,.18); display: flex; gap: 8px; align-items: center; }
+.plan-confirm .btn { flex: 1; min-height: 46px; font-size: 15px; }
+.plan-confirm small { flex: 0 0 auto; max-width: 38%; line-height: 1.2; }
+/* v8: события и сцены */
+.btn.disabled { opacity: .5; filter: grayscale(.5); }
+.xev p { line-height: 1.5; }
+.xev-who { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 10px; background: rgba(120,80,30,.15); margin-bottom: 4px; }
+.fade-scene .cs-banter { font-style: normal; text-align: left; background: rgba(255,255,255,.05); border-left: 2px solid #c9a35a; padding: 6px 10px; border-radius: 6px; }
+.fade-scene .cs-morn { margin-top: 10px; }

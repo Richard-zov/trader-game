@@ -725,7 +725,8 @@ function mate(aUid, bUid) {
 
 // Наследник: взрослый, похож на одного из родителей (тот же пресет), начинает со слабыми навыками
 function makeHeir2(mother, father) {
-  const look = R() < 0.5 ? mother : father;
+  // от анонимного гостя салона — всегда похож на мать
+  const look = father.anon || father.uid === 'client' ? mother : R() < 0.5 ? mother : father;
   const rarity = clamp(Math.max(mother.rarity, father.rarity) - (R() < 0.6 ? 1 : 0) + (R() < 0.08 ? 1 : 0), 0, 3);
   const child = makeCharacter({ preset: look.preset, rarity, loyalty: 70, noGear: true });
   const p = presetById(look.preset);
@@ -746,6 +747,13 @@ function makeHeir2(mother, father) {
     const cand = R() < quality ? left[0] : pick(left);
     taken.add(cand.k); child.pot[cand.k] = Math.max(child.pot[cand.k], cand.v); child.inherited.push(cand.k);
   }
+  // полукровка: если раса отца другая — половина его расовых бонусов к потенциалу
+  if (father.race && father.race !== child.race && RACES[father.race]) {
+    child.mix = father.race;
+    for (const [k, v] of Object.entries(RACES[father.race].mods || {})) if (v > 0) child.pot[k] = clamp(child.pot[k] + Math.round(v / 2), 0, 100);
+  }
+  // гены анонимного отца: ещё один случайный потенциал повыше и случайная черта
+  if (father.anon) { const k = pick(STATS).key; child.pot[k] = clamp(child.pot[k] + rint(4, 12), 0, 100); }
   const pTraits = shuffle([...new Set([...mother.traits, ...father.traits])]).slice(0, rint(1, 2));
   child.traits = [...new Set([...pTraits, ...child.traits])].slice(0, 3);
   if (child.traits.includes('cheerful') && child.traits.includes('sensitive')) child.traits.splice(child.traits.indexOf('sensitive'), 1);
@@ -759,8 +767,11 @@ function makeHeir2(mother, father) {
   // одежда — от родителя, но другая, чем у него сейчас
   const arts = OUTFIT_ART[child.preset];
   const parentOutfit = (look.gear || []).find(i => i.kind === 'outfit');
-  const choices = (arts || []).filter(o => OUTFITS_CLASSIC.includes(o) && (!parentOutfit || o !== parentOutfit.base));
-  if (choices.length) child.gear.push(makeGear('outfit', pick(choices), 0));
+  // наследники никогда не появляются раздетыми: всегда есть повседневный наряд
+  let choices = (arts || []).filter(o => OUTFITS_CLASSIC.includes(o) && (!parentOutfit || o !== parentOutfit.base));
+  if (!choices.length) choices = (arts || []).filter(o => OUTFITS_CLASSIC.includes(o));
+  if (!choices.length) choices = OUTFITS_CLASSIC.filter(o => OUTFITS[o] && !OUTFITS[o].fem && !OUTFIT_SHY[o]);
+  child.gear.push(makeGear('outfit', pick(choices), 0));
   child.gear.push(makeGear('acc', pick(['flower', 'bow', 'scarf', 'wreath']), 0));
   syncLook(child);
   return child;
@@ -935,10 +946,10 @@ function endDay() {
   for (const c of S.owned.slice()) {
     if (c.preg && c.preg.due <= S.day + 1) {
       const child = makeHeir2(c, c.preg.father);
-      const fatherName = c.preg.father.uid === 'player' ? 'вас' : c.preg.father.name.split(' ')[0];
+      const fatherName = c.preg.father.uid === 'player' ? 'вас' : c.preg.father.anon ? 'неизвестного гостя салона' : c.preg.father.name.split(' ')[0];
       c.preg = null; c.crave = null; c.moodMod += 20; loyaltyGain(c, 5);
       S.owned.push(child);
-      lines.push(`★ Феи Приюта Ростков сдержали слово: в поместье пришл${g(child, 'ёл', 'а')} ${child.name} — взросл${g(child, 'ый наследник', 'ая наследница')} ${fn1(c)} и ${fatherName}. Похож${g(child, '', 'а')} на ${child.look === 'mother' ? 'мать' : 'отца'}.`);
+      lines.push(`★ Феи Приюта Ростков сдержали слово: в поместье пришл${g(child, 'ёл', 'а')} ${child.name} — взросл${g(child, 'ый наследник', 'ая наследница')} ${fn1(c)} и ${fatherName}. Похож${g(child, '', 'а')} на ${child.look === 'mother' ? 'мать' : 'отца'}.${child.mix ? ` Кровь отца — ${RACES[child.mix].name.toLowerCase()}: бонус к потенциалу.` : ''}`);
       if (S.owned.length > S.capacity) lines.push('! В поместье тесно: мест больше, чем положено. Расширьте дом или продайте кого-то.');
     }
   }
@@ -1301,13 +1312,13 @@ function viewCard() {
       <div class="panel-title">Черты и происхождение</div>
       <div class="chips">${traits}</div>
       <div class="race-box"><b>${r.plural}:</b> ${r.bonus}. <i>${r.quirk}.</i></div>
-      ${c.parents ? `<div class="muted small">Родители: ${esc(c.parents.join(' и '))}. Унаследованные навыки отмечены ★.</div>` : ''}
+      ${c.parents ? `<div class="muted small">Родители: ${esc(c.parents.join(' и '))}. Унаследованные навыки отмечены ★.${c.mix && RACES[c.mix] ? ` Полукровка: кровь отца — ${esc(RACES[c.mix].name.toLowerCase())}.` : ''}</div>` : ''}
     </div>
     <div class="panel parchment">
       <div class="panel-title">Род и сердце</div>
       ${breed}
       <div class="hint">${esc(prefHint(c))}</div>
-      ${c.preg ? `<div class="note">В положении: наследник придёт через ${dn(Math.max(0, c.preg.due - S.day))} (отец — ${esc(c.preg.father.name)}).</div>` : ''}
+      ${c.preg ? `<div class="note">В положении: наследник придёт через ${dn(Math.max(0, c.preg.due - S.day))} (отец — ${c.preg.father.anon ? 'анонимный гость салона' : esc(c.preg.father.name)}). Стадия ${pregStage(c)}/3.</div>` : ''}
     </div>
     ${owned ? actions : ''}`;
 }

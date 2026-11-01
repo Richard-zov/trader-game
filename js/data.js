@@ -85,8 +85,15 @@ const ACCESSORIES = {
   silkst: { name: 'Шёлковые чулки', slot: 'legs', fem: 1, bon: { cha: 3, price: 5 }, val: 60 },
   lacest: { name: 'Кружевные чулки с бантиками', slot: 'legs', fem: 1, bon: { cha: 4, mood: 3 }, val: 85 },
   tights: { name: 'Тёплые колготки', slot: 'legs', fem: 1, bon: { end: 2, calm: 2 }, val: 45 },
-  kneesox: { name: 'Гольфы в полоску', slot: 'legs', fem: 1, bon: { agi: 2, mood: 2 }, val: 35 },
+  kneesox: { name: 'Гольфы в полоску', slot: 'legs', fem: 1, bon: { agi: 2, mood: 2 }, val: 35, art: 'overknee' },
+  fishnet: { name: 'Чулки в сеточку', slot: 'legs', fem: 1, bon: { cha: 4, price: 6 }, val: 75, art: 'fishnet' },
+  garter: { name: 'Чулки с поясом и подвязками', slot: 'legs', fem: 1, bon: { cha: 5, loy: 10 }, val: 120, art: 'garter' },
+  overknee: { name: 'Гольфы выше колена', slot: 'legs', fem: 1, bon: { agi: 3, mood: 3 }, val: 50, art: 'overknee' },
+  seamed: { name: 'Чулки со швом', slot: 'legs', fem: 1, bon: { cha: 3, mas: 2, price: 4 }, val: 80, art: 'stock' },
+  thighhi: { name: 'Ажурные чулки', slot: 'legs', fem: 1, bon: { cha: 3, calm: 2 }, val: 65, art: 'stock' },
 };
+// Какой арт ног показывать: свой вариант (сеточка, подвязки, гольфы) или общий «чулки»
+const LEG_ARTS = ['fishnet', 'garter', 'overknee'];
 const SLOT_NAMES = { head: 'голова', neck: 'шея', ears: 'уши', face: 'лицо', back: 'спина', waist: 'пояс', wrist: 'запястье', hands: 'руки', legs: 'ноги', body: 'наряд' };
 
 // Наряды — тоже предметы (слот body). Арт в одежде (OUTFIT_ART) есть у всех пресетов — по 3–4 наряда; если нужного наряда нет, показывается базовый арт.
@@ -104,7 +111,7 @@ const OUTFITS = {
   night: { name: 'Шёлковая сорочка', nameM: 'Шёлковый халат', bon: { calm: 4, hp: 2 }, val: 110 },
 };
 // реакция на подаренную одежду
-const OUTFIT_SHY = { swim: 1, lace: 1, night: 1, silkst: 1, lacest: 1 };
+const OUTFIT_SHY = { swim: 1, lace: 1, night: 1, silkst: 1, lacest: 1, fishnet: 1, garter: 1, seamed: 1, thighhi: 1 };
 const OUTFIT_SHY_L = ['*краснеет до ушей* Это так… открыто, {х}. Но если вам нравится — я буду носить.', 'Ой… {х}, в этом я почти как без одежды… Простите. Спасибо.', '*прикрывается ладонями и тут же опускает руки* Как прикажете, {х}.'];
 const OUTFIT_OK_L = ['Спасибо, {х}! Вам нравится, как я выгляжу?', 'Какая красота… Спасибо, {х}!', '*кружится* Я буду беречь эту вещь, {х}.'];
 const OUTFITS_CLASSIC = ['peasant', 'noble', 'travel', 'maid', 'robe', 'work'];
@@ -128,26 +135,26 @@ const BON_NAMES = {
   order: '% к успеху заказов', loy: '% к росту лояльности', hp: ' здоровья в день',
 };
 const OUTFIT_ART = {
-  f01: ['maid', 'noble', 'peasant', 'travel', 'swim', 'stock', 'lace'],
+  f01: ['maid', 'noble', 'peasant', 'travel', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
   f02: ['peasant', 'robe', 'travel', 'dress', 'corset', 'night'],
-  f03: ['maid', 'noble', 'peasant', 'swim', 'stock', 'lace'],
+  f03: ['maid', 'noble', 'peasant', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
   f04: ['maid', 'noble', 'peasant', 'dress', 'corset', 'night'],
-  f05: ['maid', 'noble', 'robe', 'swim', 'stock', 'lace'],
+  f05: ['maid', 'noble', 'robe', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
   f06: ['noble', 'travel', 'work'],
   f07: ['maid', 'peasant', 'robe'],
-  f08: ['peasant', 'robe', 'travel', 'swim', 'stock', 'lace'],
+  f08: ['peasant', 'robe', 'travel', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
   f09: ['peasant', 'robe', 'travel', 'dress', 'corset', 'night'],
-  f10: ['maid', 'noble', 'robe', 'swim', 'stock', 'lace'],
+  f10: ['maid', 'noble', 'robe', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
   f11: ['noble', 'robe', 'travel'],
-  f12: ['noble', 'robe', 'travel', 'swim', 'stock', 'lace'],
+  f12: ['noble', 'robe', 'travel', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
   f13: ['maid', 'peasant', 'work'],
-  f14: ['maid', 'noble', 'travel', 'swim', 'stock', 'lace'],
-  f15: ['noble', 'peasant', 'travel', 'swim', 'stock', 'lace'],
+  f14: ['maid', 'noble', 'travel', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
+  f15: ['noble', 'peasant', 'travel', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
   f16: ['maid', 'peasant', 'travel', 'dress', 'corset', 'night'],
   f17: ['peasant', 'travel', 'work'],
-  f18: ['maid', 'noble', 'robe', 'swim', 'stock', 'lace'],
+  f18: ['maid', 'noble', 'robe', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
   f19: ['maid', 'peasant', 'work'],
-  f20: ['noble', 'robe', 'work', 'swim', 'stock', 'lace'],
+  f20: ['noble', 'robe', 'work', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
   f21: ['maid', 'robe', 'work'],
   f22: ['maid', 'peasant', 'work'],
   f23: ['robe', 'travel', 'work'],
