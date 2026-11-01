@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#4a2e1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Торговец из Медового Лога</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-str" viewBox="0 0 24 24"><path d="M4 20 L14 10 M12 6 L18 2 L22 6 L18 12 Z M6 14 L10 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-agi" viewBox="0 0 24 24"><path d="M3 12 C8 4 16 4 21 12 M14 6 L21 12 L14 14 M3 18 L12 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-end" viewBox="0 0 24 24"><path d="M12 3 L20 6 V12 C20 17 16 20 12 21 C8 20 4 17 4 12 V6 Z" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-int" viewBox="0 0 24 24"><path d="M3 5 C7 4 10 5 12 7 C14 5 17 4 21 5 V19 C17 18 14 19 12 20 C10 19 7 18 3 19 Z M12 7 V20" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-cha" viewBox="0 0 24 24"><path d="M12 20 C4 14 3 10 5 7 C7 4 11 5 12 8 C13 5 17 4 19 7 C21 10 20 14 12 20 Z" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-mas" viewBox="0 0 24 24"><path d="M4 20 L13 11 M11 5 L17 3 L21 7 L19 13 L15 9 Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-wil" viewBox="0 0 24 24"><path d="M12 2 L14.5 9 L22 9 L16 13.5 L18 21 L12 16.5 L6 21 L8 13.5 L2 9 L9.5 9 Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-luk" viewBox="0 0 24 24"><path d="M12 12 C9 6 4 8 6 11 C3 13 7 17 12 12 C9 18 13 21 14 17 C17 19 19 15 16 13 C21 11 17 7 12 12 Z M12 12 L9 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="n-manor" viewBox="0 0 32 32"><path d="M4 15 L16 5 L28 15 M7 13 V27 H25 V13 M13 27 V19 H19 V27" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></symbol>
+    <symbol id="n-market" viewBox="0 0 32 32"><path d="M4 12 L7 5 H25 L28 12 Z M4 12 C4 15 9 15 9 12 C9 15 14 15 14 12 C14 15 18 15 18 12 C18 15 23 15 23 12 C23 15 28 15 28 12 M6 15 V27 H26 V15 M12 27 V20 H20 V27" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></symbol>
+    <symbol id="n-tavern" viewBox="0 0 32 32"><path d="M7 9 H21 V26 C21 27 20 28 19 28 H9 C8 28 7 27 7 26 Z M21 12 H24 C26 12 27 13 27 15 V19 C27 21 26 22 24 22 H21 M7 9 C7 5 11 5 12 7 C13 4 18 4 18 7 C20 6 22 7 21 9 M11 13 V24 M16 13 V24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></symbol>
+    <symbol id="n-bag" viewBox="0 0 32 32"><path d="M6 12 H26 L24 27 H8 Z M11 12 C11 5 21 5 21 12 M6 12 L8 9 H24 L26 12 M14 17 H18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+<div id="app">
+  <header class="topbar wood">
+    <button id="menu-btn" class="icon-btn" aria-label="Меню"><span></span><span></span><span></span></button>
+    <div class="tb-mid">
+      <div class="tb-day" id="day">День 1</div>
+      <div class="tb-rep">Гильдия: <span id="rep"></span></div>
+    </div>
+    <div class="gold-pill"><span class="coin"></span><span id="gold">0</span></div>
+    <button id="endday" class="btn btn-end">Завершить<br>день</button>
+  </header>
+  <main id="screen"></main>
+  <nav class="bottomnav wood">
+    <button class="nav-btn" data-go="manor"><svg><use href="#n-manor"/></svg><span>Поместье</span></button>
+    <button class="nav-btn" data-go="market"><svg><use href="#n-market"/></svg><span>Рынок</span></button>
+    <button class="nav-btn" data-go="tavern"><svg><use href="#n-tavern"/></svg><span>Таверна</span></button>
+    <button class="nav-btn" data-go="bag"><svg><use href="#n-bag"/></svg><span>Сумка</span></button>
+  </nav>
+</div>
+<div id="modal"></div>
+<div id="toast"></div>
+<script src="js/data.js"></script>
+<script src="js/artmeta.js"></script>
+<script src="js/portrait.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
