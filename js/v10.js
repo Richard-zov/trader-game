@@ -1,173 +1,6 @@
 'use strict';
 // ===== v10: Владения (мини-карта построек), цели, налоги и спрос, аукцион =====
-const BLD = {
-  market: { n: 'Рынок', d: 'Прилавки и навесы. Торговля с горожанами.', st: ['cha', 'int'], tr: ['charming', 'clever'], base: 42, cost: 600, roof: '#b5523a', x: 18, y: 30 },
-  quarry: { n: 'Каменоломня', d: 'Камень для всего Лога. Тяжёлая работа.', st: ['str', 'end'], tr: ['hardy', 'diligent'], base: 46, cost: 700, roof: '#7a7266', x: 78, y: 18 },
-  workshop: { n: 'Мастерская', d: 'Столярка и кузня: заказы на поделки.', st: ['mas', 'agi'], tr: ['diligent', 'clever'], base: 50, cost: 800, roof: '#8a5a2e', x: 50, y: 22 },
-  farm: { n: 'Огород', d: 'Овощи и мёд: доход и дешевле еда в поместье.', st: ['end', 'wil'], tr: ['diligent', 'cheerful'], base: 32, cost: 450, roof: '#c9a23a', x: 20, y: 72 },
-  tavern: { n: 'Таверна', d: 'Свой кабачок: песни, пироги, слухи. Иногда +репутация.', st: ['cha', 'luk'], tr: ['charming', 'cheerful'], base: 44, cost: 900, roof: '#9b3b2e', x: 50, y: 56 },
-  baths: { n: 'Купальни', d: 'Тёплые купальни и лекарь: снимают стресс и лечат всех домашних.', st: ['wil', 'cha'], tr: ['loyal', 'hardy'], base: 24, cost: 1000, roof: '#3e7a8a', x: 80, y: 74 },
-  library: { n: 'Башня-библиотека', d: 'Переписчики книг. Работники понемногу умнеют.', st: ['int', 'wil'], tr: ['clever', 'loyal'], base: 34, cost: 1100, roof: '#4a4f8a', x: 80, y: 46 },
-};
-const BLD_SLOTS = [0, 1, 2, 2, 3, 4];
-function estOf() {
-  if (!S.est) S.est = { b: {}, dem: {}, self: 0, last: null };
-  for (const k in BLD) { if (!S.est.b[k]) S.est.b[k] = { lv: 0 }; if (!S.est.dem[k]) S.est.dem[k] = 1; }
-  if (!S.goals) S.goals = { day: 0, list: [], ms: {}, cnt: {} };
-  if (!S.auc) S.auc = { next: S.day, lots: [], sell: [], won: 0 };
-  return S.est;
-}
-function bldCost(k, lv) { return Math.round(BLD[k].cost * Math.pow(lv, 1.55) / 10) * 10; }
-function bldUpkeep(k) { const lv = estOf().b[k].lv; return lv ? 6 + lv * 5 : 0; }
-function bldWorkers(k) { return S.owned.filter(c => c.bld === k); }
-function bldWorkerOut(c, k) {
-  const B = BLD[k], lv = S.est.b[k].lv, why = [];
-  const sv = (eff(c, B.st[0]) + eff(c, B.st[1]) * 0.7) / 1.7, req = 12 + lv * 6;
-  let m = clamp(sv / 40, 0.35, 2.2); why.push([`${statName(B.st[0])}+${statName(B.st[1])} ${Math.round(sv)}`, m]);
-  if (sv < req) { why.push([`ниже требования ${req}`, 0.6]); m *= 0.6; }
-  const lm = 1 + 0.35 * (lv - 1); why.push([`уровень ${lv}`, lm]); m *= lm;
-  for (const t of B.tr) if (has(c, t)) { why.push([TRAITS[t].name, 1.25]); m *= 1.25; }
-  if (has(c, 'lazy')) { why.push(['Лень', 0.85]); m *= 0.85; }
-  if (has(c, 'clumsy') && (k === 'workshop' || k === 'quarry')) { why.push(['Неуклюжесть', 0.85]); m *= 0.85; }
-  if (c.fatigue >= 70) { why.push(['усталость', 0.6]); m *= 0.6; }
-  const dm = S.est.dem[k]; why.push([`спрос`, dm]); m *= dm;
-  return { v: Math.round(B.base * m), why, req, sv: Math.round(sv) };
-}
-function bldPreview(k) { return bldWorkers(k).reduce((a, c) => a + bldWorkerOut(c, k).v, 0); }
-function bldAssign(uid, k) {
-  const c = findOwned(uid); if (!c) return;
-  if (!k) { c.bld = null; toast(`${fn1(c)} снят${g(c, '', 'а')} с работы в постройке.`); save(); return; }
-  if (c.status !== 'home') return toast('Сейчас занят' + g(c, '', 'а') + ' на заказе.');
-  const lv = estOf().b[k].lv; if (!lv) return toast('Сначала постройте здание.');
-  if (bldWorkers(k).length >= BLD_SLOTS[lv]) return toast('Все места заняты — улучшите здание.');
-  c.bld = k; toast(`${fn1(c)} теперь работает: ${BLD[k].n}. Обычных дел у н${g(c, 'его', 'её')} не будет.`); goalBump('assign'); save();
-}
-function bldUpgrade(k) {
-  const b = estOf().b[k]; if (b.lv >= 5) return;
-  const cost = bldCost(k, b.lv + 1);
-  if (S.gold < cost) return toast(`Не хватает монет: нужно ${fmt(cost)}.`);
-  S.gold -= cost; b.lv++; sfx('coin');
-  addLog(`${b.lv === 1 ? 'Построено' : 'Улучшено'}: ${BLD[k].n} (ур. ${b.lv}) за ${fmt(cost)} мон.`);
-  toast(`${BLD[k].n}: уровень ${b.lv}!`); goalBump('build'); save(); render(); bldModal(k);
-}
-function bldSelf(k) {
-  const E = estOf(); if (E.self === S.day) return toast('Сегодня вы уже поработали сами — завтра снова.');
-  const lv = E.b[k].lv, v = Math.round(BLD[k].base * (0.6 + lv * 0.25) * E.dem[k] * (0.85 + R() * 0.3));
-  E.self = S.day; S.gold += v; S.totalEarned += v;
-  const L = { market: 'Вы сами встали за прилавок и зазывали покупателей.', quarry: 'Вы взяли кирку и помогли с тяжёлыми глыбами.', workshop: 'Вы выточили пару ложек и починили сундук.', farm: 'Вы пропололи грядки и проверили ульи.', tavern: 'Вы сами разливали сидр и травили байки.', baths: 'Вы растопили печи и разнесли полотенца.', library: 'Вы переписали главу старой хроники.' };
-  let extra = '';
-  if (k === 'tavern' && R() < 0.35) { S.rep += 1; extra = ' Гости довольны: репутация +1.'; }
-  if (k === 'baths') { for (const c of homeChars()) c.stress = clamp(c.stress - 5); extra = ' Домашним полегчало: стресс −5.'; }
-  addLog(`${L[k]} +${v} мон.`); goalBump('self');
-  showModal('Поработать самому', `<p>${L[k]}</p><p class="report-total">+${fmt(v)} мон.${extra}</p><p class="small muted">Раз в день. Доход растёт с уровнем постройки и спросом.</p>`, [{ label: 'Хорошо', cls: 'btn-primary', act: () => { closeModal(); render(); } }]);
-  save();
-}
-// --- рисунок постройки (SVG, тёплая «рисованная» палитра) ---
-function bldSvg(k, lv, sel) {
-  const B = BLD[k], s = lv ? 0.62 + lv * 0.1 : 0.55, R0 = B.roof;
-  let g = '';
-  if (!lv) g = `<ellipse cx="0" cy="8" rx="20" ry="7" fill="#b89a62" opacity=".55"/><path d="M-10 6 L-10 -6 M-10 -6 L4 -6 L4 0 L-10 0" stroke="#6b4a2a" stroke-width="2" fill="#e8d6a8"/><text x="-3" y="-1" font-size="6" text-anchor="middle" fill="#6b4a2a">+</text>`;
-  else if (k === 'quarry') {
-    g = `<ellipse cx="0" cy="10" rx="${20 + lv * 3}" ry="8" fill="#9a8f80"/><path d="M-18 8 L-10 -6 L-2 2 L6 -10 L18 8 Z" fill="#b7ad9c" stroke="#5e564a" stroke-width="1.5"/>${lv >= 2 ? '<rect x="8" y="2" width="9" height="6" fill="#8a6a42" stroke="#4a3520"/>' : ''}${lv >= 3 ? '<path d="M-20 8 L-14 -2 L-8 8Z" fill="#a39886" stroke="#5e564a"/>' : ''}${lv >= 4 ? '<path d="M14 -10 L22 -18 M22 -18 L26 -14" stroke="#4a3520" stroke-width="2"/>' : ''}${lv >= 5 ? '<circle cx="-6" cy="-2" r="2.5" fill="#f0c255"/>' : ''}`;
-  } else if (k === 'farm') {
-    g = `<rect x="-24" y="0" width="34" height="14" rx="2" fill="#7f9a4a"/>${[0, 1, 2, 3].map(i => `<path d="M-22 ${2 + i * 3.2} H8" stroke="#5c7a32" stroke-width="1.6"/>`).join('')}<rect x="10" y="-6" width="14" height="14" fill="#e8d6a8" stroke="#6b4a2a" stroke-width="1.5"/><path d="M8 -6 L17 -15 L26 -6Z" fill="${R0}" stroke="#6b4a2a"/>${lv >= 2 ? '<rect x="-30" y="2" width="5" height="8" rx="2" fill="#e0b84a" stroke="#7a5a1a"/>' : ''}${lv >= 3 ? '<circle cx="-14" cy="-4" r="4" fill="#5c8a3a"/><rect x="-15" y="-1" width="2" height="4" fill="#6b4a2a"/>' : ''}${lv >= 4 ? '<rect x="-30" y="-6" width="5" height="7" rx="2" fill="#e0b84a" stroke="#7a5a1a"/>' : ''}${lv >= 5 ? '<path d="M17 -15 V-22 L22 -20 L17 -18" fill="#f0c255" stroke="#6b4a2a"/>' : ''}`;
-  } else {
-    const w = 26 + (lv >= 3 ? 8 : 0), h = 16 + (lv >= 3 ? 8 : 0), tower = k === 'library';
-    g = `<ellipse cx="0" cy="${h / 2 + 2}" rx="${w / 2 + 6}" ry="5" fill="#000" opacity=".12"/>`;
-    if (tower) g += `<rect x="-8" y="${-h - 10}" width="16" height="${2 * h + 10}" fill="#e3d4b0" stroke="#5a4a3a" stroke-width="1.5" transform="translate(0 ${-h / 2 + 4})"/><path d="M-11 ${-h * 1.5 - 6} L0 ${-h * 1.5 - 22 - lv * 2} L11 ${-h * 1.5 - 6}Z" fill="${R0}" stroke="#3a2a4a"/><rect x="-3" y="${-h}" width="6" height="7" rx="3" fill="#f6d77a"/>`;
-    else {
-      g += `<rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" fill="#efdfb8" stroke="#6b4a2a" stroke-width="1.5"/><path d="M${-w / 2 - 4} ${-h / 2} L0 ${-h / 2 - 13 - lv} L${w / 2 + 4} ${-h / 2}Z" fill="${R0}" stroke="#5a3a20" stroke-width="1.5"/><rect x="-3" y="${h / 2 - 8}" width="6" height="8" fill="#7a4a2a"/><rect x="${-w / 2 + 3}" y="${-h / 2 + 3}" width="5" height="5" fill="#f6d77a" stroke="#6b4a2a"/><rect x="${w / 2 - 8}" y="${-h / 2 + 3}" width="5" height="5" fill="#f6d77a" stroke="#6b4a2a"/>`;
-      if (k === 'market') g += `<path d="M${-w / 2 - 10} 0 h10 v-5 h-10z" fill="#e9c46a"/>${[0, 1, 2].map(i => `<rect x="${-w / 2 - 10 + i * 3.4}" y="-5" width="1.7" height="5" fill="#b5523a"/>`).join('')}`;
-      if (k === 'tavern') g += `<rect x="${w / 2 + 1}" y="-4" width="7" height="6" rx="1" fill="#d8a84a" stroke="#5a3a20"/>`;
-      if (k === 'baths') g += `<path d="M-6 ${-h / 2 - 16 - lv} q3 -4 0 -8 M0 ${-h / 2 - 17 - lv} q3 -4 0 -8 M6 ${-h / 2 - 16 - lv} q3 -4 0 -8" stroke="#fff" stroke-width="1.5" fill="none" opacity=".85"/>`;
-      if (k === 'workshop') g += `<rect x="${w / 2 - 7}" y="${-h / 2 - 18 - lv}" width="4" height="10" fill="#6b5a4a"/><circle cx="${w / 2 - 5}" cy="${-h / 2 - 22 - lv}" r="3" fill="#ccc" opacity=".6"/>`;
-    }
-    if (lv >= 2 && !tower) g += `<rect x="${-w / 2 + 2}" y="${-h / 2 - 11 - lv}" width="4" height="7" fill="#8a6a4a"/>`;
-    if (lv >= 4) g += `<path d="M${tower ? 0 : w / 2 + 4} ${tower ? -h * 1.5 - 22 - lv * 2 : -h / 2} v-14 l8 3 l-8 3" fill="#c0392b" stroke="#5a3a20"/>`;
-    if (lv >= 5) g += `<path d="M${-w / 2 - 4} ${-h / 2} L0 ${-h / 2 - 13 - lv} L${w / 2 + 4} ${-h / 2}" fill="none" stroke="#f0c255" stroke-width="2"/>`;
-  }
-  return `<g class="bld ${sel ? 'sel' : ''}" data-bld="${k}" transform="translate(${B.x * 3.6} ${B.y * 4.6}) scale(${s * 1.25})">${g}<rect x="-30" y="-34" width="60" height="52" fill="transparent"/></g>`;
-}
-function viewEstate() {
-  const E = estOf();
-  const blds = Object.keys(BLD), tot = blds.reduce((a, k) => a + bldPreview(k), 0), upk = blds.reduce((a, k) => a + bldUpkeep(k), 0);
-  const free = homeChars().filter(c => !c.bld).length;
-  return `<div class="screen-head"><h1>Владения</h1><div class="sub">Стройте и улучшайте предприятия, ставьте работников. Нажмите на участок.</div></div>
-  <div class="est-map parchment"><svg viewBox="0 0 360 460" class="est-svg">
-    <defs><radialGradient id="estg" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#c9d98f"/><stop offset="1" stop-color="#8fae5e"/></radialGradient></defs>
-    <rect width="360" height="460" rx="14" fill="url(#estg)"/>
-    <path d="M-10 380 C80 340 120 420 200 380 S320 330 370 360 L370 470 L-10 470Z" fill="#7fb3c9" opacity=".85"/>
-    <path d="M180 0 C170 90 200 160 180 250 S150 360 175 460" stroke="#d9c08a" stroke-width="16" fill="none" stroke-linecap="round"/>
-    <path d="M0 200 C90 210 140 240 180 250 S300 230 360 215" stroke="#d9c08a" stroke-width="11" fill="none"/>
-    ${[[30, 150], [330, 140], [120, 420], [250, 180], [320, 300], [40, 420], [140, 110]].map(([x, y]) => `<g transform="translate(${x} ${y})"><rect x="-2" y="2" width="4" height="8" fill="#6b4a2a"/><circle r="9" fill="#5c8a3a"/><circle cx="-4" cy="-3" r="5" fill="#6f9e48"/></g>`).join('')}
-    <text x="180" y="448" text-anchor="middle" font-size="11" fill="#2e4a5a" font-style="italic">речка Медовка</text>
-    ${blds.map(k => bldSvg(k, E.b[k].lv)).join('')}
-    ${blds.map(k => { const B = BLD[k], lv = E.b[k].lv; return `<g class="bld-lab" data-bld="${k}"><rect x="${B.x * 3.6 - 34}" y="${B.y * 4.6 + 22}" width="68" height="15" rx="7" fill="#fff8e6" opacity=".9" stroke="#8a6438"/><text x="${B.x * 3.6}" y="${B.y * 4.6 + 33}" text-anchor="middle" font-size="9.5" fill="#3b2616">${B.n.replace('Башня-библиотека', 'Библиотека')}${lv ? ' · ' + lv : ''}</text></g>`; }).join('')}
-  </svg></div>
-  <div class="panel parchment"><div class="panel-title">Сводка владений</div>
-    <div class="small">Доход за день (прогноз): <b>+${fmt(tot)}</b> · содержание построек: <b>−${upk}</b> · свободных рук: ${free}</div>
-    <div class="est-list">${blds.map(k => { const lv = E.b[k].lv, d = E.dem[k]; return `<button class="est-row" data-bld="${k}"><b>${BLD[k].n}</b><span>${lv ? `ур. ${lv} · ${bldWorkers(k).length}/${BLD_SLOTS[lv]} раб. · +${bldPreview(k)}` : `участок · ${fmt(bldCost(k, 1))} мон.`}</span><span class="dem ${d >= 1.1 ? 'up' : d <= 0.9 ? 'down' : ''}">спрос ${d >= 1.1 ? '▲' : d <= 0.9 ? '▼' : '•'} ${Math.round(d * 100)}%</span></button>`; }).join('')}</div>
-    ${E.last ? `<div class="small muted">Вчера постройки принесли ${fmt(E.last.inc)} мон. (содержание −${E.last.upk}).</div>` : ''}
-    <div class="small muted">Работник постройки весь день там — обычных дел (ремесло, торговля, салон, учёба) у него нет. Спрос меняется каждый день.</div></div>`;
-}
-function bldModal(k) {
-  const E = estOf(), B = BLD[k], lv = E.b[k].lv, ws = bldWorkers(k);
-  const cand = homeChars().filter(c => !c.bld).map(c => ({ c, o: bldWorkerOut(c, k) })).sort((a, b) => b.o.v - a.o.v);
-  const statN = B.st.map(statName).join(' и '), trN = B.tr.map(t => TRAITS[t].name).join(', ');
-  const nextC = lv < 5 ? bldCost(k, lv + 1) : 0;
-  showModal(B.n + (lv ? ` · уровень ${lv}` : ' · участок'), `
-    <div class="bld-pic"><svg viewBox="-38 -48 76 66" width="190" height="165">${bldSvg(k, lv).replace(/transform="[^"]*"/, '')}</svg></div>
-    <p class="small">${B.d}</p>
-    <div class="small">Нужны: <b>${statN}</b> (требование ${12 + Math.max(1, lv) * 6}) · бонус черт: <b>${trN}</b> (+25%)</div>
-    <div class="small">Спрос сегодня: ${Math.round(E.dem[k] * 100)}% · содержание: ${bldUpkeep(k) || (6 + 5)} мон./день</div>
-    ${lv ? `<div class="panel-title small" style="margin-top:8px">Работники ${ws.length}/${BLD_SLOTS[lv]}</div>
-    ${ws.map(c => { const o = bldWorkerOut(c, k); return `<div class="bw-row"><b>${esc(fn1(c))}</b> +${o.v} <button class="btn small" data-bldun="${c.uid}">Снять</button><div class="why small muted">Почему так: ${B.base} × ${o.why.map(w => `${w[0]} ×${w[1].toFixed(2)}`).join(' · ')}</div></div>`; }).join('') || '<div class="small muted">Пока никого.</div>'}
-    ${ws.length < BLD_SLOTS[lv] && cand.length ? `<div class="small" style="margin-top:6px">Поставить (лучшие сверху):</div>${cand.slice(0, 6).map(({ c, o }) => `<button class="chip bw-cand" data-bldto="${c.uid}" data-k="${k}">${esc(fn1(c))} · +${o.v}${o.sv < o.req ? ' ⚠' : ''}</button>`).join(' ')}` : ''}` : ''}
-  `, [
-    ...(lv < 5 ? [{ label: `${lv ? 'Улучшить' : 'Построить'} · ${fmt(nextC)}`, cls: 'btn-primary', act: () => bldUpgrade(k) }] : []),
-    ...(lv ? [{ label: E.self === S.day ? 'Сами — уже сегодня' : 'Поработать самому', act: () => bldSelf(k) }] : []),
-    { label: 'Закрыть', act: 'close' }]);
-}
-// день: выработка построек (до основного подсчёта)
-function estDayStart() {
-  const E = estOf(); let inc = 0, upk = 0; const lines = [];
-  for (const k in BLD) {
-    const lv = E.b[k].lv; if (!lv) continue;
-    upk += bldUpkeep(k);
-    for (const c of bldWorkers(k)) {
-      if (c.status !== 'home') { c.bld = null; continue; }
-      if (c.sickDays > 0 || c.health < 30) { lines.push(`${fn1(c)} не вышл${g(c, 'и', 'а')} в «${BLD[k].n}» — нездоровится.`); continue; }
-      const o = bldWorkerOut(c, k); inc += o.v;
-      c._bp = { fatigue: c.fatigue, stress: c.stress, health: c.health, task: c.task, fa: k === 'quarry' ? 20 : k === 'baths' || k === 'library' ? 10 : 15, sa: k === 'tavern' || k === 'market' ? 10 : 7 };
-      c.status = 'bld'; c.task = 'rest';
-      lines.push(`${fn1(c)} — ${BLD[k].n}: +${o.v} мон.`);
-      if (k === 'library') { const s = pick(['int', 'wil']); if (R() < 0.4 && c.stats[s] < c.pot[s]) c.stats[s]++; }
-      if (R() < 0.25) { const s = pick(BLD[k].st); if (c.stats[s] < c.pot[s]) c.stats[s]++; }
-    }
-    if (k === 'tavern' && R() < 0.12 * lv) { S.rep += 1; lines.push('Ваша таверна в моде: репутация +1.'); }
-    if (k === 'baths') { for (const c of S.owned) { c.stress = clamp(c.stress - 3 * lv); c.health = clamp(c.health + 2 * lv); } lines.push(`Купальни: всем стресс −${3 * lv}, здоровье +${2 * lv}.`); }
-  }
-  // налог гильдии раз в неделю — чтобы монеты не копились без дела
-  let tax = 0;
-  if (S.day % 7 === 0) { const lvls = Object.values(E.b).reduce((a, b) => a + b.lv, 0); tax = Math.round(Math.max(0, S.gold - 1500) * 0.04 + lvls * 12); if (tax) lines.push(`Недельный сбор гильдии: −${tax} мон. (4% с запаса сверх 1500 и по 12 за уровень построек).`); }
-  S.gold += inc - upk - tax; S.totalEarned += inc;
-  E.last = { inc, upk, tax, lines, day: S.day };
-}
-function estDayEnd() {
-  for (const c of S.owned) if (c._bp) {
-    const p = c._bp; c.status = 'home'; c.task = p.task;
-    c.fatigue = clamp(p.fatigue + p.fa * (has(c, 'lazy') ? 1.3 : 1)); c.stress = clamp(Math.max(c.stress - 0, p.stress + p.sa * (has(c, 'cheerful') ? 0.7 : has(c, 'sensitive') ? 1.3 : 1)));
-    c.health = Math.min(c.health, p.health + 2);
-    if (c.fatigue >= 90) c.health = clamp(c.health - 10);
-    delete c._bp;
-  }
-  const E = estOf();
-  for (const k in BLD) { const d = E.dem[k] + (R() - 0.5) * 0.16 + (1 - E.dem[k]) * 0.15; E.dem[k] = +clamp(d, 0.65, 1.45).toFixed(2); }
-  const fe = mev(); if (fe && S.mevent) { if (S.mevent.id === 'festival') { E.dem.tavern = 1.4; E.dem.market = 1.35; } if (S.mevent.id === 'drought') E.dem.farm = 1.45; }
-  if (E.b.farm.lv) S._farmDisc = E.b.farm.lv * 0.05;
-}
-// огород удешевляет еду
-(function () { const o = window.upkeep; if (typeof o !== 'function') return; window.upkeep = function () { const r = o.apply(this, arguments); try { const lv = S.est && S.est.b.farm ? S.est.b.farm.lv : 0; if (lv) { const cut = Math.round(r.food * lv * 0.06); r.food -= cut; r.total -= cut; } } catch (e) { } return r; }; })();
+// v11: модуль города (постройки, карта, события) — в js/city.js
 
 // ===== Цели =====
 const GOAL_POOL = [
@@ -187,7 +20,7 @@ const MILESTONES = [
 function goalsRoll() {
   const G = estOf() && S.goals;
   if (G.day === S.day) return G;
-  const pool = GOAL_POOL.slice().sort(() => R() - 0.5).slice(0, 3);
+  const pool = GOAL_POOL.filter(p => !p[5] || p[5]()).sort(() => R() - 0.5).slice(0, 3);
   G.day = S.day; G.cnt = {}; G.list = pool.map(p => ({ id: p[0], t: p[1], need: p[2], rw: p[3] + S.day * 3, rep: p[4], done: false }));
   return G;
 }
@@ -226,7 +59,7 @@ const BIDDERS = [
 function aucRoll() {
   const A = estOf() && S.auc; if (A.next > S.day && A.lots.length) return A;
   A.next = S.day + 2; A.lots = [];
-  const n = 3 + (rankIdx() >= 2 ? 1 : 0);
+  const n = 3 + (rankIdx() >= 2 ? 1 : 0) + (typeof mktLv === 'function' && mktLv() ? 1 : 0);
   for (let i = 0; i < n; i++) {
     const t = i === 0 ? 'slave' : pick(['gear', 'gear', 'item', 'rare']);
     let lot = { id: 'L' + (S.nextId++), t };
@@ -240,6 +73,7 @@ function aucRoll() {
   return A;
 }
 let AUCS = null; // текущие торги
+function aucFee() { return 0.08; }
 function aucOpen(id) {
   const lot = S.auc.lots.find(l => l.id === id); if (!lot || lot.done) return;
   const bs = BIDDERS.slice().sort(() => R() - 0.5).slice(0, 3).map(b => ({ ...b, max: Math.round(lot.val * (b.lo + R() * (b.hi - b.lo))) }));
@@ -303,7 +137,7 @@ function aucResolveSells() {
   for (const l of A.sell) {
     const c = l.k === 'slave' ? findOwned(l.uid) : null;
     if (l.k === 'slave' && (!c || c.status !== 'home')) { if (c) keep.push(l); continue; }
-    const price = Math.round(l.val * (0.75 + R() * 0.75)), fee = Math.round(Math.max(price, l.val) * 0.08);
+    const price = Math.round(l.val * (0.75 + R() * 0.75)), fee = Math.round(Math.max(price, l.val) * aucFee());
     if (price < l.reserve) { const lf = Math.round(l.val * 0.02); S.gold -= lf; out.push(`Аукцион: «${l.name}» не продан (лучшая ставка ${fmt(price)} < резерва ${fmt(l.reserve)}). Сбор за лот −${lf}.`); if (l.k === 'gear') S.stash.push(l.it); if (l.k === 'item') S.inv[l.item] = (S.inv[l.item] || 0) + 1; continue; }
     S.gold += price - fee; S.totalEarned += price - fee;
     if (c) { S.owned = S.owned.filter(x => x !== c); }
@@ -320,7 +154,7 @@ function viewAuction() {
   ${A.lots.map(l => `<div class="auc-lot ${l.done ? 'done' : ''}"><div><b>${esc(l.name)}</b><div class="small muted">оценка ≈${fmt(l.val)} · старт ${fmt(l.reserve)} · выкуп ${fmt(l.buyout)}</div></div>${l.done ? `<small>ушло: ${esc(l.who)}</small>` : `<button class="btn btn-primary small" data-auc="${l.id}">Торговаться</button>`}</div>`).join('')}
   </div>
   <div class="panel parchment"><div class="panel-title">Продать через аукцион</div>
-  <div class="small muted">Цена может выйти выше рынка (до +50%), но есть резерв 90% оценки и комиссия 8%. Не продано — сбор 2% и вещь возвращается. Итог в конце дня.</div>
+  <div class="small muted">Цена может выйти выше рынка (до +50%), но есть резерв 90% оценки и комиссия ${Math.round(aucFee() * 100)}%. Не продано — сбор 2% и вещь возвращается. Итог в конце дня.</div>
   ${A.sell.length ? `<div class="small" style="margin:6px 0">Выставлено: ${A.sell.map(s => `<b>${esc(s.name)}</b> (≈${fmt(s.val)})`).join(', ')}</div>` : ''}
   <div class="auc-sell">${mine.map(c => `<button class="chip" data-aucsell="slave:${c.uid}">${esc(fn1(c))} ≈${fmt(sellPrice(c))}</button>`).join('')}
   ${S.stash.slice(0, 8).map(it => `<button class="chip" data-aucsell="gear:${it.iid}">${esc(gearDef(it).name)}</button>`).join('')}
@@ -342,7 +176,12 @@ function viewAuction() {
       const L = S.est && S.est.last;
       if (L && L.day === S.day - 1 && !L.shown && /report|Итог/i.test(html + title) && /report-total/.test(html)) {
         L.shown = true;
-        if (L.lines.length || L.inc || L.upk) html = html.replace(/(<[^>]*class="[^"]*report-total)/, `<div class="est-rep"><div class="panel-title small">Владения и аукцион</div>${L.lines.map(l => `<div class="small">${esc(l)}</div>`).join('')}<div class="small"><b>Постройки: +${fmt(L.inc)} − содержание ${L.upk}${L.tax ? ` − сбор ${L.tax}` : ''} = ${L.inc - L.upk - L.tax >= 0 ? '+' : ''}${fmt(L.inc - L.upk - L.tax)} мон.</b> <span class="muted">(уже в кассе, сверх итога ниже)</span></div></div>$1`);
+        const net = L.inc - L.upk - (L.tax || 0);
+        if (L.lines.length || L.inc || L.upk) html = html.replace(/(<[^>]*class="[^"]*report-total)/, `<div class="est-rep"><div class="panel-title small">Город и аукцион</div>${L.lines.map(l => `<div class="small">${esc(l)}</div>`).join('')}<div class="small"><b>Город: доход +${fmt(L.inc)} − содержание ${fmt(L.upk)}${L.tax ? ` − сбор ${fmt(L.tax)}` : ''} = ${net >= 0 ? '+' : ''}${fmt(net)} мон.</b></div></div>$1`);
+        html = html.replace(/Итог дня: <b class="(pos|neg)">([^<]*)<\/b> мон\./, (m0, cls, num) => {
+          const base = parseInt(String(num).replace(/[^0-9\-−]/g, '').replace('−', '-'), 10) || 0, tot = base + net;
+          return `Итог дня: <b class="${tot >= 0 ? 'pos' : 'neg'}">${tot >= 0 ? '+' : ''}${fmt(tot)}</b> мон.<div class="small muted">дела и заказы ${base >= 0 ? '+' : ''}${fmt(base)} · город ${net >= 0 ? '+' : ''}${fmt(net)}</div>`;
+        });
       }
     } catch (e) { }
     return oModal.call(this, title, html, btns);
@@ -355,7 +194,7 @@ function viewAuction() {
       if (UI.screen === 'estate') $app().innerHTML = viewEstate();
       else if (UI.screen === 'auction') $app().innerHTML = viewAuction();
       else if (UI.screen === 'manor') { const h = document.querySelector('#screen .screen-head'); if (h) h.insertAdjacentHTML('afterend', goalsPanel()); }
-      else if (UI.screen === 'card') { const c = findOwned(UI.cardUid); if (c && c.bld) { const h = document.querySelector('#screen .screen-head') || document.querySelector('#screen > *'); if (h) h.insertAdjacentHTML('afterend', `<div class="panel parchment est-note small">Работает во Владениях: <b>${BLD[c.bld].n}</b> — обычные дела не выполняет. <button class="btn small" data-bldun="${c.uid}">Снять</button></div>`); } }
+      else if (UI.screen === 'card') { const c = findOwned(UI.cardUid); if (c && c.bld) { const h = document.querySelector('#screen .screen-head') || document.querySelector('#screen > *'); if (h) h.insertAdjacentHTML('afterend', `<div class="panel parchment est-note small">${c.bld[0] === '@' ? 'Строит' : 'Работает'} во Владениях: <b>${esc(bldLabel(c.bld))}</b> — обычные дела не выполняет. <button class="btn small" data-bldun="${c.uid}">Снять</button></div>`); } }
       document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.go === UI.screen));
     } catch (e) { console.warn('v10 render', e); }
     return r;

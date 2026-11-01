@@ -761,7 +761,7 @@ function makeHeir2(mother, father) {
   child.title = g(child, 'Наследник рода', 'Наследница рода');
   child.parents = [mother.name, father.name];
   child.kin = [mother.uid, father.uid, ...(mother.kin || []), ...(father.kin || [])];
-  child.age = child.race === 'elf' ? rint(60, 70) : child.race === 'dwarf' ? rint(30, 34) : rint(18, 20);
+  child.age = child.race === 'elf' ? rint(60, 70) : child.race === 'dwarf' ? rint(30, 34) : rint(19, 21);
   child.appraised = true; child.growth = 12; child.stress = 5; child.fatigue = 0; child.health = 100; child.discipline = 25;
   child.look = look === mother ? 'mother' : 'father';
   // одежда — от родителя, но другая, чем у него сейчас
