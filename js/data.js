@@ -84,7 +84,7 @@ const ACCESSORIES = {
 };
 const SLOT_NAMES = { head: 'голова', neck: 'шея', ears: 'уши', face: 'лицо', back: 'спина', waist: 'пояс', wrist: 'запястье', hands: 'руки', body: 'наряд' };
 
-// Наряды — тоже предметы (слот body). Арт в одежде есть только у части пресетов (OUTFIT_ART), у остальных наряд даёт бонусы без смены картинки.
+// Наряды — тоже предметы (слот body). Арт в одежде (OUTFIT_ART) есть у всех пресетов — по 3–4 наряда; если нужного наряда нет, показывается базовый арт.
 const OUTFITS = {
   peasant: { name: 'Крестьянский наряд', bon: { end: 2, hp: 2 }, val: 50 },
   noble: { name: 'Благородный наряд', bon: { cha: 5, price: 12 }, val: 220 },
@@ -106,10 +106,37 @@ const BON_NAMES = {
   order: '% к успеху заказов', loy: '% к росту лояльности', hp: ' здоровья в день',
 };
 const OUTFIT_ART = {
-  f01: ['peasant', 'noble', 'travel', 'maid'],
-  f08: ['robe', 'travel', 'peasant'],
+  f01: ['maid', 'noble', 'peasant', 'travel'],
+  f02: ['peasant', 'robe', 'travel'],
+  f03: ['maid', 'noble', 'peasant'],
+  f04: ['maid', 'noble', 'peasant'],
+  f05: ['maid', 'noble', 'robe'],
+  f06: ['noble', 'travel', 'work'],
+  f07: ['maid', 'peasant', 'robe'],
+  f08: ['peasant', 'robe', 'travel'],
+  f09: ['peasant', 'robe', 'travel'],
+  f10: ['maid', 'noble', 'robe'],
+  f11: ['noble', 'robe', 'travel'],
+  f12: ['noble', 'robe', 'travel'],
+  f13: ['maid', 'peasant', 'work'],
+  f14: ['maid', 'noble', 'travel'],
+  f15: ['noble', 'peasant', 'travel'],
+  f16: ['maid', 'peasant', 'travel'],
+  f17: ['peasant', 'travel', 'work'],
+  f18: ['maid', 'noble', 'robe'],
+  f19: ['maid', 'peasant', 'work'],
+  f20: ['noble', 'robe', 'work'],
   f21: ['maid', 'robe', 'work'],
-  m07: ['work', 'noble', 'travel'],
+  f22: ['maid', 'peasant', 'work'],
+  f23: ['robe', 'travel', 'work'],
+  m01: ['noble', 'travel', 'work'],
+  m02: ['noble', 'peasant', 'robe'],
+  m03: ['noble', 'robe', 'travel'],
+  m04: ['noble', 'robe', 'travel'],
+  m05: ['peasant', 'travel', 'work'],
+  m06: ['noble', 'peasant', 'work'],
+  m07: ['noble', 'travel', 'work'],
+  m08: ['noble', 'peasant', 'work'],
 };
 const ACC_COLORS = ['#8a3b2e', '#4f6b3a', '#2f4f6b', '#7a5a2a', '#6b3f6b', '#b8862f', '#3e5c5a', '#9b4a3c'];
 

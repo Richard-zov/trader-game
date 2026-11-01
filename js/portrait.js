@@ -6,7 +6,7 @@
 const PORTRAIT_CFG = {
   artDir: 'assets/portraits/',
   accDir: 'assets/accessories/',
-  ext: '.png',
+  ext: '.webp',
   outfitDir: 'assets/outfits/',
   overlayAccessoriesOnArt: false, // поставить true, если арт рисуется без аксессуаров
   bgDir: 'assets/backgrounds/',

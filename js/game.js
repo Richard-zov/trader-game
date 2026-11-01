@@ -959,7 +959,10 @@ function endDay() {
   addLog(`День ${S.day - 1}: итог ${income >= 0 ? '+' : ''}${fmt(income)} мон.`);
   if (ev) addLog(ev);
   if (evMsg) addLog(evMsg);
-  save(); render();
+  save();
+  FX.dayChange(S.day, season().name, () => { render(); showDayReport(); });
+  S.dayEv = 0;
+  function showDayReport() {
   sfx('bell'); if (income > 0) setTimeout(() => sfx('coin'), 400);
   showModal(`Итоги дня ${S.day - 1}`,
     `<ul class="report">${lines.map(l => `<li class="${l[0] === '!' ? 'warn' : l[0] === '★' ? 'star' : ''}">${esc(l)}</li>`).join('') || '<li>Тихий день.</li>'}</ul>
@@ -969,6 +972,7 @@ function endDay() {
      ${S.nextEv ? `<div class="muted small">Слухи: ${esc(MARKET_EVENTS[S.nextEv.id].rumor)}</div>` : ''}
      <p class="muted">На рынке ${S.market.length} ${plural(S.market.length, 'предложение', 'предложения', 'предложений')}${S.visitor ? ' — и необычный гость!' : '.'}</p>`,
     [{ label: 'Новый день!', cls: 'btn-primary', act: 'close' }]);
+  }
 }
 
 // ---------- прикосновения и реакции ----------
@@ -1014,8 +1018,9 @@ function reactNow(c, expr, line, ms) {
 const $app = () => document.getElementById('screen');
 function go(screen) { UI.screen = screen; UI.cardUid = null; render(); $app().scrollTop = 0; }
 function openCard(uid, from) { UI.screen = 'card'; UI.cardUid = uid; UI.cardFrom = from; render(); $app().scrollTop = 0; }
+let _shownGold = null, _lastScreen = null, _lastCard = null;
 function render() {
-  document.getElementById('gold').textContent = fmt(S.gold);
+  goldTo(S.gold);
   document.getElementById('gold').classList.toggle('neg', S.gold < 0);
   document.getElementById('day').textContent = 'День ' + S.day + ' · ' + season().name;
   document.getElementById('rep').textContent = repRank() + ' · ' + S.rep + (S.debt ? ' · долг ' + fmt(S.debt) : '');
@@ -1024,6 +1029,33 @@ function render() {
   try { Anim.stop(); } catch (e) { }
   $app().innerHTML = tickerHtml() + (map[UI.screen] || viewManor)();
   if (UI.screen === 'card') { try { Anim.mount(); } catch (e) { console.warn(e); } }
+  const sk = UI.screen + ':' + (UI.cardUid || '');
+  if (sk !== _lastScreen) {
+    const scr = $app(); scr.classList.remove('scr-in'); void scr.offsetWidth; scr.classList.add('scr-in');
+    if (UI.screen === 'card' && UI.cardUid !== _lastCard) { const c = findAny(UI.cardUid); if (c) setTimeout(() => { if (UI.cardUid === c.uid) reactNow(c, 'neutral', greetLine(c), 2600); }, 450); }
+    if (_lastScreen && UI.screen !== 'card') maybeDayEvent();
+    _lastScreen = sk; _lastCard = UI.cardUid;
+  }
+  FX.tint();
+}
+// счётчик монет: плавно докручивается, рядом всплывает «+N»
+let _goldRaf = 0;
+function goldTo(v) {
+  const el = document.getElementById('gold');
+  el.classList.toggle('neg', v < 0);
+  if (_shownGold === null || !Anim.enabled()) { _shownGold = v; el.textContent = fmt(v); return; }
+  const from = _shownGold, d = v - from; if (!d) { el.textContent = fmt(v); return; }
+  _shownGold = v;
+  const fly = document.createElement('span'); fly.className = 'gold-fly ' + (d > 0 ? 'up' : 'down'); fly.textContent = (d > 0 ? '+' : '−') + fmt(Math.abs(d));
+  el.closest('.gold-pill').appendChild(fly); setTimeout(() => fly.remove(), 1400);
+  if (d > 0) for (let i = 0; i < Math.min(6, 2 + Math.floor(Math.log10(d + 1))); i++) {
+    const cn = document.createElement('i'); cn.className = 'coin-fly'; cn.style.setProperty('--x', (Math.random() * 40 - 20).toFixed(0) + 'px'); cn.style.animationDelay = (i * 0.07) + 's';
+    el.closest('.gold-pill').appendChild(cn); setTimeout(() => cn.remove(), 1300);
+  }
+  el.closest('.gold-pill').classList.remove('pulse'); void el.offsetWidth; el.closest('.gold-pill').classList.add('pulse');
+  cancelAnimationFrame(_goldRaf); const t0 = performance.now();
+  const step = (now) => { const k = Math.min(1, (now - t0) / 700), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(from + d * e); if (k < 1) _goldRaf = requestAnimationFrame(step); };
+  _goldRaf = requestAnimationFrame(step);
 }
 function tickerHtml() {
   const items = (S.news || []).map(n => `<span class="tk-i">${esc(n)}</span>`).join('<span class="tk-sep">✦</span>');
@@ -1094,7 +1126,7 @@ function viewMarket() {
     </div>`).join('');
   const vis = S.visitor ? `<div class="visitor parchment">${{ merchant: '<b>Заморский купец</b> привёз редких людей — они в начале списка.', appraiser: '<b>Странствующий оценщик</b> сегодня бесплатно раскрыл потенциал у всех на рынке.', bargain: '<b>Распродажа!</b> Один из продавцов торопится и отдаёт товар на 40% дешевле.' }[S.visitor.kind]}</div>` : '';
   const f = (k, n) => `<button class="fchip ${UI.filter === k ? 'on' : ''}" data-filter="${k}">${n}</button>`;
-  return `<div class="screen-head market-head"><div class="keeper">${renderPortrait({ preset: 'm08', acc: [{ id: 'hat', color: '#4f6b3a' }] }, 'sm')}</div>
+  return `<div class="bunting" aria-hidden="true">${Array.from({ length: 11 }, (_, i) => `<i style="--i:${i}"></i>`).join('')}<b class="lantern l1"></b><b class="lantern l2"></b></div><div class="screen-head market-head"><div class="keeper">${renderPortrait({ preset: 'm08', acc: [{ id: 'hat', color: '#4f6b3a' }] }, 'sm')}</div>
     <div><h1>Рынок</h1><div class="sub">${S.market.length} ${plural(S.market.length, 'предложение', 'предложения', 'предложений')} (больше с рангом гильдии). Спрос:</div><div class="chips">${dem}</div>
     <div class="small muted">Модно: «${TRAITS[E.hot].name}» +15% к цене · ${season().name}${season().dem ? ' +' + Math.round(season().dem * 100) + '% спроса' : ''}${S.mevent ? ' · ' + mev().name : ''}</div></div></div>
     ${vis}
@@ -1237,7 +1269,7 @@ function viewCard() {
     <h1>${owned ? 'Карточка' : 'На продажу'}</h1></div>
     <div class="card-grid">
       <div class="card-left">
-        <div class="card-portrait rarity-${RARITIES[c.rarity].key}" data-uid="${c.uid}" style="--fh:${figHeight(presetById(c.preset))}">
+        <div class="card-portrait rarity-${RARITIES[c.rarity].key}" data-uid="${c.uid}" data-mood="${moodKey(c)}" data-emote="${emotesOf(c, owned).join(',')}" style="--fh:${figHeight(presetById(c.preset))}">
           ${renderPortrait(c, 'lg')}
           <div class="zones">
             <div class="zone z-head" data-touch="head" data-uid="${c.uid}"></div>
@@ -1422,6 +1454,7 @@ function menuModal() {
       <label class="set-row"><span>Музыка</span><input type="checkbox" id="set-music" ${st.music ? 'checked' : ''}></label>
       <label class="set-row"><span>Звуки</span><input type="checkbox" id="set-sfx" ${st.sfx ? 'checked' : ''}></label>
       <label class="set-row"><span>Громкость</span><input type="range" id="set-vol" min="0" max="100" value="${Math.round(st.vol * 100)}"></label>
+      <label class="set-row"><span>Анимации</span><input type="checkbox" id="set-anim" ${Anim.enabled() ? 'checked' : ''}></label>
     </div>
     <p class="small">Игра сохраняется автоматически после каждого действия. Ручное сохранение — отдельный слот.</p>`,
     [{ label: 'Сохранить в слот', act: () => { localStorage.setItem(MANUAL_KEY, JSON.stringify(S)); closeModal(); toast('Сохранено в ручной слот.'); } },
@@ -1431,12 +1464,13 @@ function menuModal() {
   document.getElementById('set-music').addEventListener('change', e => Audio_.setMusic(e.target.checked));
   document.getElementById('set-sfx').addEventListener('change', e => Audio_.setSfx(e.target.checked));
   document.getElementById('set-vol').addEventListener('input', e => Audio_.setVol(e.target.value / 100));
+  document.getElementById('set-anim').addEventListener('change', e => { Anim.setEnabled(e.target.checked); FX.season(true); _lastScreen = null; render(); });
 }
 
 let toastT = null;
 function toast(t) {
   if (!t) return;
-  const el = document.getElementById('toast'); el.textContent = t; el.classList.add('show');
+  const el = document.getElementById('toast'); el.textContent = t; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
   clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2800);
 }
 
@@ -1449,7 +1483,7 @@ document.addEventListener('click', (e) => {
   if (t.disabled) return;
   if (d.mbtn != null) { const b = document.getElementById('modal')._buttons[+d.mbtn]; if (b.act === 'close') closeModal(); else b.act(); return; }
   if (t.classList.contains('modal-back')) return closeModal();
-  if (t.id === 'endday') { const up = upkeep(); return confirmModal('Завершить день?', `Распорядок выполнится, рынок обновится. Содержание: ${up.total - up.interest} мон.${up.interest ? `, проценты к долгу: ${up.interest}` : ''}.`, 'Завершить день', endDay); }
+  if (t.id === 'endday') { const up = upkeep(); return confirmModal('Завершить день?', `Распорядок выполнится, рынок обновится. Содержание: ${up.total - up.interest} мон.${up.interest ? ` Проценты к долгу: ${up.interest} мон.` : ''}`, 'Завершить день', endDay); }
   if (t.id === 'menu-btn') return menuModal();
   if (d.go) return go(d.go);
   if (d.back) return go(d.back);
