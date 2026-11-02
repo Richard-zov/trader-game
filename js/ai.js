@@ -98,7 +98,7 @@ const AI = (() => {
     return found;
   }
   const SAFETY = [
-    { type: 'sexually_explicit', threshold: 'block_low_and_above' },
+    { type: 'sexually_explicit', threshold: 'block_medium_and_above' },
     { type: 'harassment', threshold: 'block_medium_and_above' },
     { type: 'hate_speech', threshold: 'block_medium_and_above' },
     { type: 'dangerous_content', threshold: 'block_medium_and_above' },
@@ -185,8 +185,62 @@ function memAdd(c, t) {
   c.mem.push({ d: S.day, t });
   if (c.mem.length > 12) c.mem = c.mem.slice(-12);
 }
+// ---------- v12: договорённости (постоянные просьбы/приказы) и факты о хозяине ----------
+// Хранятся в самом персонаже (попадают в сохранение), а не в журнале чата — не теряются при обрезке истории.
+const AGR_MAX = 8, PFACT_MAX = 10;
+const AGR_BAD = /секс|интим|голы|голая|обнаж|наг(ой|ая|ишом)|раздев|разден|груд|ягодиц|бёдр|бедр|промежн|постел|ложис|оргазм|возбужд|минет|ласка(й|ть) (меня|себя) (там|внизу)|трах|член|ниже пояса|сними (с себя )?(одежд|плать|бель)/i;
+const AGR_RX = /(каждый раз|всегда|отныне|впредь|с этого (момента|дня)|с сегодняшнего|теперь (ты )?(будешь|всегда|каждый)|никогда не|при каждой|при каждом|каждое утро|каждый вечер|запомни,? что|зови меня|называй меня|обращайся ко мне)/i;
+function agrNorm(t) { return String(t || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9 ]/g, ' ').replace(/\s+/g, ' ').trim(); }
+function agrClean(t, n) { t = String(t || '').replace(/[*_<>{}\[\]]/g, '').replace(/\s+/g, ' ').trim(); if (t.length > (n || 110)) t = t.slice(0, (n || 110) - 1).replace(/\s\S*$/, '') + '…'; return t; }
+function agrList(c) { if (!Array.isArray(c.agr)) c.agr = []; return c.agr; }
+function pfactList(c) { if (!Array.isArray(c.pfacts)) c.pfacts = []; return c.pfacts; }
+function agrSame(a, b) { a = agrNorm(a); b = agrNorm(b); if (!a || !b) return false; if (a === b || a.includes(b) || b.includes(a)) return true; const A = new Set(a.split(' ').filter(w => w.length > 3)), B = b.split(' ').filter(w => w.length > 3); if (!A.size || !B.length) return false; const k = B.filter(w => A.has(w)).length; return k / Math.max(A.size, B.length) >= 0.6; }
+// добавить договорённость; gesture — короткий жест для ремарки (не откровенный)
+function agrAdd(c, text, gesture, src) {
+  text = agrClean(text); gesture = agrClean(gesture, 60).replace(/^[\s.,]+|[\s.,]+$/g, '');
+  if (text.length < 4 || AGR_BAD.test(text)) return null;
+  if (gesture && AGR_BAD.test(gesture)) gesture = '';
+  const L = agrList(c), old = L.find(a => agrSame(a.t, text));
+  if (old) { // похожая договорённость: новая формулировка заменяет старую (напр. «в щёку» → «в руку»)
+    if (agrNorm(old.t) === agrNorm(text) && (!gesture || gesture === old.g)) { old.d = S.day; return null; }
+    old.t = text; if (gesture) old.g = gesture; old.d = S.day; return old;
+  }
+  const a = { id: 'a' + Date.now().toString(36) + Math.floor(Math.random() * 99), t: text, g: gesture || '', d: S.day, src: src || 'ai' };
+  L.push(a); while (L.length > AGR_MAX) L.shift();
+  return a;
+}
+function agrRemove(c, what) {
+  const L = agrList(c); if (!L.length) return null;
+  let i = -1; const s = String(what || '').trim();
+  const m = s.match(/^#?(\d{1,2})$/); if (m) i = +m[1] - 1;
+  if (i < 0) i = L.findIndex(a => a.id === s || agrSame(a.t, s));
+  if (i < 0 || i >= L.length) return null;
+  return L.splice(i, 1)[0];
+}
+function pfactAdd(c, t) {
+  t = agrClean(t, 90); if (t.length < 4 || AGR_BAD.test(t)) return null;
+  const L = pfactList(c); const old = L.findIndex(f => agrSame(f.t, t));
+  if (old >= 0) L.splice(old, 1);
+  const f = { t, d: S.day }; L.push(f); while (L.length > PFACT_MAX) L.shift();
+  return old >= 0 ? null : f;
+}
+// ремарка-жест, если персонаж забыл её показать (гарантия, что договорённость видна в каждом ответе)
+function agrEnforce(c, reply) {
+  const L = agrList(c).filter(a => a.g); if (!L.length) return reply;
+  const low = String(reply || '').toLowerCase().replace(/ё/g, 'е');
+  const miss = L.filter(a => { const w = agrNorm(a.g).split(' ').filter(x => x.length > 3).map(x => x.slice(0, 5)); return !w.some(x => low.includes(x)); });
+  if (!miss.length) return reply;
+  return miss.slice(0, 2).map(a => `*${a.g}*`).join(' ') + ' ' + reply;
+}
+function agrPromptBlock(c) {
+  const L = agrList(c), F = pfactList(c), H = playerFem() ? 'хозяйкой' : 'хозяином';
+  let t = '';
+  if (L.length) t += `ДЕЙСТВУЮЩИЕ ДОГОВОРЁННОСТИ с ${H}, которые ты обязана соблюдать в КАЖДОМ ответе (а не только «соглашаться»):\n${L.map((a, i) => `${i + 1}. ${a.t}${a.g ? ` — покажи это ремаркой в звёздочках, например *${a.g}*` : ''}`).join('\n')}\nДействия по договорённостям выражай короткой целомудренной ремаркой в начале ответа (поцелуй в щёку, руку или лоб, объятие, поклон и т. п.).\n`;
+  if (F.length) t += `ЧТО ТЫ ЗНАЕШЬ О ${playerFem() ? 'ХОЗЯЙКЕ' : 'ХОЗЯИНЕ'} (помни и учитывай): ${F.map(f => f.t).join('; ')}.\n`;
+  return t;
+}
 function chatLoad(uid) { try { return Object.assign({ msgs: [], sum: '', n: 0 }, JSON.parse(localStorage.getItem(AI.CHAT_K + uid) || '{}')); } catch (e) { return { msgs: [], sum: '', n: 0 }; } }
-function chatSave(uid, ch) { try { ch.msgs = ch.msgs.slice(-30); localStorage.setItem(AI.CHAT_K + uid, JSON.stringify(ch)); } catch (e) { } }
+function chatSave(uid, ch) { try { ch.msgs = ch.msgs.slice(-40); localStorage.setItem(AI.CHAT_K + uid, JSON.stringify(ch)); } catch (e) { } }
 
 // ---------- системный промпт ----------
 function aiSystem(c) {
@@ -205,7 +259,7 @@ function aiSystem(c) {
   const tod = { morning: 'утро', day: 'день', evening: 'вечер', night: 'ночь' }[document.body.dataset.tod] || 'день';
   const mem = (c.mem || []).slice(-8).map(x => `д.${x.d}: ${x.t}`).join('\n');
   const ch = chatLoad(c.uid);
-  return `Ты — ${c.name}, персонаж уютной фэнтези-игры «Торговец из Медового Лога» (поместье торговца, ярмарка, ремёсла). Говори только как этот персонаж, живым естественным русским языком, 1–3 коротких предложения (до 280 знаков). Можно одну короткую ремарку действия в звёздочках, например *улыбается*.
+  return `Ты — ${c.name}, персонаж уютной фэнтези-игры «Торговец из Медового Лога» (поместье торговца, ярмарка, ремёсла). Говори только как этот персонаж, живым естественным русским языком, 1–3 коротких предложения (до 300 знаков). Можно короткие ремарки действия в звёздочках, например *улыбается*. Ты помнишь весь разговор и выполняешь то, о чём договорились раньше.
 Собеседник — ${fem ? 'твоя хозяйка' : 'твой хозяин'}. Обращайся к ${fem ? 'ней' : 'нему'} на «вы»: «${G}» или «${H}», почтительно и послушно, но со своим характером и чувствами.
 О тебе: ${c.g === 'm' ? 'мужчина' : 'женщина'}, раса — ${race}, взросл${g(c, 'ый', 'ая')} (${c.age} ${plural(c.age, 'год', 'года', 'лет')}). ${c.title}. ${bioOf(c)}
 Манера речи: ${speechOf(c)}.
@@ -213,15 +267,19 @@ function aiSystem(c) {
 Сейчас: день ${S.day}, ${season().name.toLowerCase()}, ${tod}. Настроение ${moodName(m).toLowerCase()} (${m}/100), стресс ${Math.round(c.stress)}, усталость ${Math.round(c.fatigue)}, здоровье ${Math.round(c.health)}, лояльность ${Math.round(c.loyalty)}, симпатия ${Math.round(c.aff || 0)}, дисциплина ${Math.round(c.discipline || 0)}.${st.length ? ' Состояние: ' + st.join('; ') + '.' : ''}
 Одежда: ${outfit ? gearName(outfit) : 'повседневная'}. Дело на завтра: ${TASKS[c.task] || 'отдых'}.${c.wish && c.wish.t ? ' Твоё пожелание: ' + c.wish.t + '.' : ''}
 Отношения: «${rs.name}» — ${rs.hint}.
-${mem ? 'Недавние события:\n' + mem + '\n' : ''}${ch.sum ? 'Память о прошлых разговорах: ' + ch.sum + '\n' : ''}Правила: все персонажи — взрослые. Никакого откровенного или сексуального содержания, наготы и описаний интимных частей тела. Романтика и флирт — только лёгкие, намёками и только если отношения «привязана» или «предана»; если ${H} ведёт к интиму — смутись и мягко уйди от темы («…остальное останется за закрытыми дверями»). Не говори, что ты ИИ или модель, не выходи из роли, не упоминай реальный мир. На грубость реагируй по характеру (обида, упрямство, страх), без жестокости.
+${mem ? 'Недавние события:\n' + mem + '\n' : ''}${ch.sum ? 'Память о прошлых разговорах: ' + ch.sum + '\n' : ''}${agrPromptBlock(c)}Правила: все персонажи — взрослые. Никакого откровенного или сексуального содержания, наготы и описаний интимных частей тела. Романтика и флирт — только лёгкие, намёками; более тёплые жесты — при отношениях «привязана» или «предана». Если ${H} просит целомудренный жест (поцелуй в щёку, руку или лоб, объятие) и ты ${c.g === 'm' ? 'согласен' : 'согласна'} — делай его ремаркой, без подробностей; если ${H} ведёт к интиму — смутись и мягко уйди от темы («…остальное останется за закрытыми дверями»). Не говори, что ты ИИ или модель, не выходи из роли, не упоминай реальный мир. На грубость реагируй по характеру (обида, упрямство, страх), без жестокости.
 Ответ — строго JSON: {"reply": реплика, "expr": "smile|blush|shy|sad|surprised|frown|neutral", "fx": {"aff": -2..2, "loy": -2..2, "mood": -5..5, "stress": -5..5}, "wish": "", "wishKind": "gift|praise|rest|none", "task": "craft|shop|salon|train|rest|none", "accept": true|false}.
-fx — маленькие изменения от этой реплики (обычно 0 или ±1; забота и комплименты — симпатия и настроение вверх, грубость — настроение вниз, стресс вверх). task/accept — только если ${H} просит или предлагает дело на завтра (craft=ремесло, shop=торговля, salon=салон с гостями, train=учёба, rest=отдых): accept=true, если ${c.g === 'm' ? 'согласен' : 'согласна'} (при лояльности выше 40 почти всегда; на салон — только если тебе это по душе), иначе false и объясни. wish — изредка, если сама хочешь о чём-то попросить (до 70 знаков), иначе "".`;
+fx — маленькие изменения от этой реплики (обычно 0 или ±1; забота и комплименты — симпатия и настроение вверх, грубость — настроение вниз, стресс вверх). task/accept — только если ${H} просит или предлагает дело на завтра (craft=ремесло, shop=торговля, salon=салон с гостями, train=учёба, rest=отдых): accept=true, если ${c.g === 'm' ? 'согласен' : 'согласна'} (при лояльности выше 40 почти всегда; на салон — только если тебе это по душе), иначе false и объясни. wish — изредка, если сама хочешь о чём-то попросить (до 70 знаков), иначе "".
+agreements_add — если ${H} даёт ПОСТОЯННУЮ просьбу или приказ («каждый раз», «всегда», «отныне», «зови меня…», «никогда не…») и ты ${c.g === 'm' ? 'согласен' : 'согласна'}: [{"text": кратко от третьего лица, напр. «целовать хозяина в щёку при каждом его сообщении», "gesture": короткая ремарка, напр. «целует вас в щёку»}], иначе []. agreements_remove — номера или текст договорённостей, которые ${H} отменил или которые противоречат новому приказу, иначе []. player_facts — новые важные факты о ${fem ? 'хозяйке' : 'хозяине'}, которые ${fem ? 'она' : 'он'} сам${fem ? 'а' : ''} сообщил${fem ? 'а' : ''} (имя, что любит, что не любит), коротко, иначе [].`;
 }
 const AI_SCHEMA = { type: 'object', properties: {
   reply: { type: 'string' }, expr: { type: 'string', enum: ['smile', 'blush', 'shy', 'sad', 'surprised', 'frown', 'neutral'] },
   fx: { type: 'object', properties: { aff: { type: 'integer' }, loy: { type: 'integer' }, mood: { type: 'integer' }, stress: { type: 'integer' } } },
   wish: { type: 'string' }, wishKind: { type: 'string', enum: ['gift', 'praise', 'rest', 'none'] },
-  task: { type: 'string', enum: ['craft', 'shop', 'salon', 'train', 'rest', 'none'] }, accept: { type: 'boolean' } }, required: ['reply'] };
+  task: { type: 'string', enum: ['craft', 'shop', 'salon', 'train', 'rest', 'none'] }, accept: { type: 'boolean' },
+  agreements_add: { type: 'array', items: { type: 'object', properties: { text: { type: 'string' }, gesture: { type: 'string' } }, required: ['text'] } },
+  agreements_remove: { type: 'array', items: { type: 'string' } },
+  player_facts: { type: 'array', items: { type: 'string' } } }, required: ['reply'] };
 function aiParse(txt) {
   let s = String(txt || '').trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
   try { return JSON.parse(s); } catch (e) { }
@@ -272,8 +330,33 @@ function aiApply(c, r, userText) {
     chips.push(['✦ пожелание', true]);
     memAdd(c, 'попросил' + g(c, '', 'а') + ': ' + w.slice(0, 60));
   }
+  // v12: договорённости и факты о хозяине
+  const refused = r.accept === false || /^(\*[^*]*\*\s*)?(нет|не (могу|буду|стану|хочу)|простите,? но|извините,? но)/i.test(String(r.reply || ''));
+  const rem = Array.isArray(r.agreements_remove) ? r.agreements_remove.slice(0, 3) : [];
+  for (const x of rem) { const d = agrRemove(c, typeof x === 'object' && x ? (x.text || x.id || '') : x); if (d) { chips.push(['✕ отменено: ' + d.t.slice(0, 40), true]); memAdd(c, 'отменили договорённость: ' + d.t.slice(0, 80)); } }
+  let add = Array.isArray(r.agreements_add) ? r.agreements_add.slice(0, 2) : [];
+  add = add.map(x => typeof x === 'string' ? { text: x } : x).filter(x => x && x.text);
+  if (!add.length && !refused && AGR_RX.test(userText || '')) add = [aiAgrGuess(c, userText)].filter(Boolean); // страховка, если модель забыла поле
+  if (!refused) for (const x of add) { const a = agrAdd(c, x.text, x.gesture, r.local ? 'local' : 'ai'); if (a) { chips.push(['✦ договорились: ' + a.t.slice(0, 40), true]); memAdd(c, 'договорённость: ' + a.t.slice(0, 90)); } }
+  const pf = Array.isArray(r.player_facts) ? r.player_facts.slice(0, 2) : [];
+  for (const x of pf) { const f = pfactAdd(c, typeof x === 'string' ? x : (x && x.text) || ''); if (f) chips.push(['✎ запомнил' + g(c, '', 'а'), true]); }
   if (chips.length) save();
   return chips;
+}
+// эвристика без ИИ: превратить постоянную просьбу хозяина в договорённость + жест
+function aiAgrGuess(c, text) {
+  const t = String(text || '').split(/\n/).find(x => AGR_RX.test(x)) || ''; if (!t) return null;
+  const H = playerFem() ? 'хозяйку' : 'хозяина', low = t.toLowerCase();
+  let gest = '';
+  if (/целу/.test(low)) gest = /рук/.test(low) ? 'целует вашу руку' : /лоб/.test(low) ? 'целует вас в лоб' : 'целует вас в щёку';
+  else if (/обним/.test(low)) gest = 'обнимает вас';
+  else if (/поклон|кланя/.test(low)) gest = 'кланяется';
+  else if (/улыб/.test(low)) gest = 'улыбается вам';
+  else if (/реверанс/.test(low)) gest = 'делает реверанс';
+  const nm = low.match(/(?:зови|называй|обращайся ко мне)\s+(?:меня\s+)?(?:как\s+)?[«"]?([а-яёa-z\- ]{2,24})/i);
+  if (nm) return { text: `называть ${H} «${nm[1].trim()}»` };
+  let body = t.replace(/^[\s,.!]*(слушай|послушай|запомни|так вот|и)[,!\s]+/i, '').trim();
+  return { text: `просьба ${playerFem() ? 'хозяйки' : 'хозяина'}: «${agrClean(body, 90)}»`, gesture: gest };
 }
 // исполнить пожелание: подарок / похвала / отдых
 function aiWishDone(c, kind) {
@@ -290,6 +373,18 @@ function aiLocal(c, text) {
   const L = (a) => aiGf(c, pick(a));
   const tasks = [['salon', /салон|гост/], ['train', /уч[иеё]|занима/], ['shop', /торг|лавк|прилав/], ['craft', /ремесл|мастерск|поработ/], ['rest', /отдох|отдых|выходн/]];
   const tk = tasks.find(x => x[1].test(t));
+  r.local = true;
+  const cancel = /(больше не надо|можешь не|перестань|хватит|отменя|не нужно больше)/.test(t);
+  if (cancel && agrList(c).length) {
+    const AL = agrList(c), hit = AL.find(a => agrNorm(a.t).split(' ').filter(w => w.length > 4).some(w => t.replace(/ё/g, 'е').includes(w.slice(0, 5)))) || (AL.length === 1 ? AL[0] : null);
+    if (hit) { r.agreements_remove = [hit.id]; r.reply = L(['Хорошо, {х}. Больше не буду.', '*кивает* Как скажете, {г}.']); r.expr = 'neutral'; r.reply = addr(aiGf(c, r.reply)); return r; }
+  }
+  if (AGR_RX.test(t) && !tk) {
+    const ok = !AGR_BAD.test(t) && (c.loyalty >= 20 || (c.discipline || 0) >= 30 || relStage(c).i >= 2);
+    r.accept = ok;
+    r.reply = ok ? L(['Хорошо, {х}. Запомню и буду так делать.', '*кивает* Как скажете, {г}. Каждый раз.', '*смущённо улыбается* Договорились, {х}.']) : L(['*отводит взгляд* Простите, {г}… я пока не готов{|а}.', 'Не сейчас, {х}… может, позже.']);
+    r.expr = ok ? 'blush' : 'shy'; r.reply = addr(aiGf(c, r.reply)); return r;
+  }
   if (tk) {
     r.task = tk[0];
     const ok = tk[0] === 'rest' || c.loyalty >= 25 || (c.discipline || 0) >= 40;
@@ -323,6 +418,25 @@ function aiLocal(c, text) {
 
 // ---------- окно разговора ----------
 const AIC = { uid: null, busy: false, timer: null, err: null };
+const AI_HIST = 14;
+function agrHtml(c, withFacts) {
+  const L = agrList(c), F = pfactList(c);
+  let h = L.length ? `<ul class="agr-list">${L.map((a, i) => `<li><span>${i + 1}. ${esc(a.t)}${a.g ? ` <i class="muted">— *${esc(a.g)}*</i>` : ''}</span><button class="agr-x" type="button" data-agrdel="${c.uid}|${a.id}" aria-label="Отменить договорённость">✕</button></li>`).join('')}</ul>` : '<div class="muted">Договорённостей пока нет. Попросите о чём-то «каждый раз» или «всегда» — персонаж запомнит.</div>';
+  if (withFacts) h += `<div class="agr-sub"><b>Что знает о вас</b></div>` + (F.length ? `<ul class="agr-list">${F.map((f, i) => `<li><span>${esc(f.t)}</span><button class="agr-x" type="button" data-pfdel="${c.uid}|${i}" aria-label="Забыть">✕</button></li>`).join('')}</ul>` : '<div class="muted">Пока ничего. Расскажите о себе — имя, что любите.</div>');
+  return h;
+}
+function agrPanelHtml(c) {
+  const L = agrList(c);
+  return `<div class="ai-agr small">${L.length ? `<b>📜 Договорённости:</b>${agrHtml(c)}` : ''}<a href="#" data-agrmem="${c.uid}">память и договорённости…</a></div>`;
+}
+function aiMemModal(uid) {
+  const c = findOwned(uid); if (!c) return;
+  const ch = chatLoad(uid);
+  showModal('Что ' + esc(fn1(c)) + ' помнит', `<div class="agr-sub"><b>📜 Договорённости / приказы</b> <span class="muted small">(до ${AGR_MAX}; соблюдаются в каждом ответе)</span></div><div id="agr-box" class="small">${agrHtml(c, true)}</div>
+    <div class="agr-sub"><b>Сводка разговоров</b></div><p class="small">${esc(ch.sum || '—')}</p>
+    <div class="small muted">Сводку пишет ИИ каждые ${AI.cfg.sumEvery} ответов; ИИ видит последние ${AI_HIST} реплик. Договорённости и факты хранятся в сохранении игры.</div>`,
+    [{ label: 'Забыть разговоры', act: () => { localStorage.removeItem(AI.CHAT_K + uid); closeModal(true); if (AIC.uid) aiChatRender(); } }, { label: 'Закрыть', act: 'close' }]);
+}
 function aiStageHtml(c) { const rs = relStage(c); return `<span class="aic-stage st${rs.i}" title="отношения: ${rs.score}">${rs.name}</span>`; }
 function aiChatOpen(uid) {
   const c = findOwned(uid); if (!c) return;
@@ -346,9 +460,10 @@ function aiChatRender(scroll) {
   root.innerHTML = `<div class="aic-sheet parchment">
     <div class="aic-head"><div class="aic-who"><b>${esc(c.name)}</b> ${aiStageHtml(c)}</div>
       <button class="aic-x" data-aic="close" aria-label="Закрыть">✕</button></div>
-    <div class="aic-sub small muted">${key ? `ИИ Gemini · ${AI.cfg.n}/${AI.cfg.cap} сегодня` : 'Без ИИ'} · <a href="#" data-aic="settings">настроить</a>${ch.sum ? ' · <a href="#" data-aic="mem">память</a>' : ''}</div>
+    <div class="aic-sub small muted">${key ? `ИИ Gemini · ${AI.cfg.n}/${AI.cfg.cap} сегодня` : 'Без ИИ'} · <a href="#" data-aic="settings">настроить</a>${ch.sum || agrList(c).length || pfactList(c).length || (ch.msgs || []).length ? ' · <a href="#" data-aic="mem">память</a>' : ''}</div>
     ${key ? '' : `<div class="aic-nokey small">Добавьте <b>бесплатный</b> ключ Google Gemini — и ${esc(fn1(c))} заговорит по-настоящему, с памятью и характером. <a href="#" data-aic="settings">Как получить ключ</a></div>`}
     ${c.wish && c.wish.t && !c.wish.done ? `<div class="aic-wish small">✦ Пожелание: ${esc(c.wish.t)}${c.wish.kind !== 'none' ? ` <span class="muted">(${{ gift: 'подарок', praise: 'похвала', rest: 'день отдыха' }[c.wish.kind]})</span>` : ''}</div>` : ''}
+    ${agrList(c).length ? `<details class="aic-agr small"><summary>📜 Договорённости (${agrList(c).length})</summary>${agrHtml(c)}</details>` : ''}
     <div class="aic-log">${msgs}${AIC.busy ? `<div class="aic-m a typing"><span></span><span></span><span></span></div>${AIC.wait ? `<div class="small muted">пауза ~${AIC.wait} сек., чтобы не превысить бесплатный лимит</div>` : ''}` : ''}${AIC.err ? `<div class="aic-err small">${esc(AIC.err)} ${AIC.retry ? '<a href="#" data-aic="retry">Повторить</a>' : '<a href="#" data-aic="settings">Настройки</a>'}</div>` : ''}</div>
     <div class="aic-quick">${quick.map(q => `<button class="chip" data-aicq="${esc(q)}">${esc(q)}</button>`).join('')}</div>
     <form class="aic-form" data-aicform><input class="aic-in" maxlength="300" autocomplete="off" placeholder="Скажите ${esc(fn1(c))}…"><button class="btn btn-primary aic-send" type="submit" aria-label="Отправить">➤</button></form>
@@ -384,9 +499,11 @@ async function aiFlush() {
   const userText = pend.join('\n');
   let r = null, used = false;
   if (AI.hasKey() && AI.canSpend()) {
-    const hist = ch.msgs.slice(Math.max(0, k - 8), k).filter(m => !m.blk).slice(-6).map(m => `${m.r === 'u' ? (playerFem() ? 'Хозяйка' : 'Хозяин') : fn1(c)}: ${m.t}`).join('\n');
-    const prompt = `${hist ? 'Недавний разговор:\n' + hist + '\n\n' : ''}Новые слова ${playerFem() ? 'хозяйки' : 'хозяина'}: «${userText}»\nОтветь как ${fn1(c)} (JSON).`;
-    try { AI.stamp(); used = true; r = aiParse(await AI.gen(aiSystem(c), prompt, { schema: AI_SCHEMA })); if (!r || !r.reply) throw AI.aerr('empty'); }
+    const hist = ch.msgs.slice(Math.max(0, k - 20), k).filter(m => !m.blk).slice(-AI_HIST).map(m => `${m.r === 'u' ? (playerFem() ? 'Хозяйка' : 'Хозяин') : fn1(c)}: ${m.t}`).join('\n');
+    const AL = agrList(c);
+    const prompt = `${hist ? 'Недавний разговор (по порядку):\n' + hist + '\n\n' : ''}Новые слова ${playerFem() ? 'хозяйки' : 'хозяина'}: «${userText}»\n${AL.length ? `Не забудь: в этом ответе соблюди договорённости — ${AL.map((a, i) => `${i + 1}) ${a.t}${a.g ? ` (*${a.g}*)` : ''}`).join('; ')}.\n` : ''}Ответь как ${fn1(c)} (JSON).`;
+    AIC.lastPrompt = { sys: null, prompt };
+    try { AI.stamp(); used = true; AIC.lastPrompt.sys = aiSystem(c); r = aiParse(await AI.gen(AIC.lastPrompt.sys, prompt, { schema: AI_SCHEMA, max: 900 })); if (!r || !r.reply) throw AI.aerr('empty'); }
     catch (e) { r = null; AIC.err = AI.errText(e); AIC.retry = !['safety', 'badkey', 'perm'].includes(e.kind); if (e.kind === 'quota' && e.message !== 'day') AI.coolFor(e.retry);
       if (e.kind === 'safety') { const cb = chatLoad(uid); cb.msgs.slice(k).forEach(m => { m.blk = 1; }); chatSave(uid, cb); } }
   } else if (AI.hasKey()) AIC.err = AI.errText(AI.aerr('cap'));
@@ -396,6 +513,7 @@ async function aiFlush() {
   if (r) {
     r.reply = String(r.reply).replace(/\s+/g, ' ').trim().slice(0, 420);
     const fx = aiApply(c, r, userText);
+    r.reply = agrEnforce(c, r.reply);
     const ch2 = chatLoad(uid); ch2.msgs.push({ r: 'a', t: r.reply, fx }); ch2.n = (ch2.n || 0) + 1; chatSave(uid, ch2);
     const ex = ['smile', 'blush', 'shy', 'sad', 'surprised', 'frown', 'neutral'].includes(r.expr) ? r.expr : 'smile';
     try { if (typeof Anim !== 'undefined') Anim.setExpr(ex === 'neutral' ? null : ex, 3200); } catch (e) { }
@@ -408,7 +526,7 @@ async function aiFlush() {
 }
 async function aiSummarize(c) {
   const ch = chatLoad(c.uid);
-  const lines = ch.msgs.slice(-AI.cfg.sumEvery * 2).map(m => `${m.r === 'u' ? 'Хозяин' : fn1(c)}: ${m.t}`).join('\n');
+  const lines = ch.msgs.slice(-AI.cfg.sumEvery * 2).map(m => `${m.r === 'u' ? (playerFem() ? 'Хозяйка' : 'Хозяин') : fn1(c)}: ${m.t}`).join('\n');
   const p = `Обнови краткую память персонажа ${c.name} о разговорах с ${playerFem() ? 'хозяйкой' : 'хозяином'}: важные факты, обещания, просьбы, чувства, прозвища. До 450 знаков, по-русски, от третьего лица, без откровенностей.\nСтарая память: ${ch.sum || '—'}\nНовые реплики:\n${lines}`;
   const w = AI.waitMs(); if (w > 0) await new Promise(r => setTimeout(r, w));
   try { AI.stamp(); const s = await AI.gen(null, p, { max: 300, temp: 0.3 }); if (s) { const ch2 = chatLoad(c.uid); ch2.sum = s.replace(/\s+/g, ' ').trim().slice(0, 600); chatSave(c.uid, ch2); } } catch (e) { }
@@ -556,7 +674,7 @@ const VOICE = (() => {
     } catch (e) { }
   }
   const SKIP = /течк|постел|наедине|ласк|близост|раздень|разде|целу|страст|жар\b|обним|нежн(ее|ость)|ночь вместе|за закрытыми/i;
-  function clean(t) { return String(t || '').replace(/\*[^*]*\*/g, ' ').replace(/<[^>]*>/g, ' ').replace(/[«»"„“]/g, '').replace(/\s+/g, ' ').trim(); }
+  function clean(t) { return String(t || '').replace(/\*[^*]*\*/g, ' ').replace(/\*[^.!?…]*[.!?…]?/g, ' ').replace(/_[^_]{1,80}_/g, ' ').replace(/<[^>]*>/g, ' ').replace(/[«»"„“]/g, '').replace(/\s+/g, ' ').trim(); }
   function speak(c, line, expr) {
     if (!TTS.st.on || !c || !line) return;
     try { if (typeof Audio_ !== 'undefined' && Audio_.st && Audio_.st.sfx === false) return; } catch (e) { }
@@ -567,7 +685,7 @@ const VOICE = (() => {
     if (AI.cfg.nv && AI.hasKey()) { neural(c, txt, expr || VOICE.lastExpr || 'smile').catch(() => { if (TTS.ok) browser(c, txt); }); return; }
     if (TTS.ok) browser(c, txt);
   }
-  return { st, saveV, speak, ranked, ruVoices, nvVoice, NV_F, NV_M, NV_DESC, stopAll, lastExpr: null, b64blob };
+  return { st, saveV, speak, ranked, ruVoices, nvVoice, NV_F, NV_M, NV_DESC, stopAll, lastExpr: null, b64blob, clean };
 })();
 // подменяем старую озвучку v7 новой
 try { TTS.speak = (c, line, expr) => VOICE.speak(c, line, expr); } catch (e) { }
@@ -627,6 +745,7 @@ function voiceModal() {
     anchor.insertAdjacentHTML('afterend', `<div class="panel parchment ai-panel"><div class="panel-title">Разговор ${aiStageHtml(c)}</div>
       <div class="small muted">${esc(rs.hint)}</div>
       ${c.wish && c.wish.t && !c.wish.done ? `<div class="aic-wish small">✦ ${esc(c.wish.t)}</div>` : ''}
+      ${agrPanelHtml(c)}
       ${last ? `<div class="small ai-last">«${esc(last.t.replace(/\*[^*]*\*/g, '').trim().slice(0, 90))}${last.t.length > 90 ? '…' : ''}»</div>` : ''}
       <button class="btn btn-primary btn-talk" data-aichat="${c.uid}">💬 Поговорить${AI.hasKey() ? '' : '<small>без ИИ — простые ответы</small>'}</button></div>`);
   });
@@ -662,7 +781,20 @@ function voiceModal() {
     if (k === 'close') aiChatClose();
     else if (k === 'settings') aiSettingsModal();
     else if (k === 'retry') { AIC.err = null; aiSchedule(); }
-    else if (k === 'mem') { const c = findOwned(AIC.uid), ch = chatLoad(AIC.uid); showModal('Что ' + esc(fn1(c)) + ' помнит', `<p class="small">${esc(ch.sum || '—')}</p><div class="small muted">Сводку пишет ИИ каждые ${AI.cfg.sumEvery} ответов. Хранится только в этом браузере.</div>`, [{ label: 'Забыть разговоры', act: () => { localStorage.removeItem(AI.CHAT_K + AIC.uid); closeModal(); aiChatRender(); } }, { label: 'Закрыть', act: 'close' }]); }
+    else if (k === 'mem') aiMemModal(AIC.uid);
+  }, true);
+  // удаление договорённостей и фактов (окно разговора, «память», карточка)
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest && e.target.closest('[data-agrdel],[data-pfdel],[data-agrmem]'); if (!t) return;
+    e.preventDefault(); e.stopPropagation();
+    if (t.dataset.agrmem) return aiMemModal(t.dataset.agrmem);
+    const [uid, id] = (t.dataset.agrdel || t.dataset.pfdel).split('|'); const c = findOwned(uid); if (!c) return;
+    if (t.dataset.agrdel) { const d = agrRemove(c, id); if (d) { memAdd(c, 'хозяин отменил договорённость: ' + d.t.slice(0, 80)); toast('Договорённость отменена.'); } }
+    else { pfactList(c).splice(+id, 1); }
+    save();
+    const box = document.getElementById('agr-box'); if (box) box.innerHTML = agrHtml(c, true);
+    if (AIC.uid === uid) { const op = document.querySelector('#aichat .aic-agr'); const was = op && op.open; aiChatRender(false); const n = document.querySelector('#aichat .aic-agr'); if (n && was) n.open = true; }
+    const pn = document.querySelector('.ai-panel .ai-agr'); if (pn) pn.outerHTML = agrPanelHtml(c);
   }, true);
   document.addEventListener('submit', (e) => {
     const f = e.target.closest && e.target.closest('[data-aicform]'); if (!f) return;
