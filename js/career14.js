@@ -319,7 +319,7 @@ let _c14lines = [];
     const g0 = S.gold, d0 = S.debt || 0, lv0 = {}; try { for (const [id, b] of bList()) lv0[id] = b.lv; } catch (e) { }
     const r = oEnd.apply(this, arguments);
     try {
-      const C = carOf(), L = []; _c14lines = L;
+      const C = carOf(), L = (window._stwPre || []).splice(0); _c14lines = L;
       const net = (S.gold - g0) - ((S.debt || 0) - d0);
       trialsDayEnd(L, net);
       // улика при улучшении каменоломни/мастерской до 2-го уровня
