@@ -894,3 +894,14 @@ details.why td small { display: block; font-size: 10.5px; opacity: .7; font-weig
 #stw-skip .stw-sk-t { font-weight: 700; margin-bottom: 4px; }
 #stw-skip .stw-sk-d { font-size: 13px; margin-bottom: 8px; color: #6a4a2a; }
 #stw-skip .bar { margin-bottom: 10px; }
+/* v14.3 мечты */
+.arc14 { margin: 8px 0; padding: 8px 10px; border-radius: 10px; background: rgba(214, 170, 80, .14); border: 1px solid rgba(160, 120, 50, .35); font-size: 13.5px; }
+.arc14 .arc14-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+.arc14 .arc14-dots i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-left: 4px; background: rgba(120, 90, 40, .25); }
+.arc14 .arc14-dots i.on { background: #d9a13a; box-shadow: 0 0 4px #f0c060; }
+.arc14 .arc14-dots i.br { background: #a5483a; }
+.arc14 .arc14-f { color: #7a5a3a; margin-top: 2px; }
+.arc14 .arc14-s { font-style: italic; margin-top: 3px; color: #5a6a3a; }
+.arc14.br { background: rgba(165, 72, 58, .1); border-color: rgba(165, 72, 58, .4); }
+.arc14.br .arc14-s { color: #a5483a; }
+.arc14.done { background: rgba(217, 161, 58, .22); }
