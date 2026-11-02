@@ -836,3 +836,46 @@ details.why td small { display: block; font-size: 10.5px; opacity: .7; font-weig
 .fa-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;max-height:52vh;overflow:auto;padding:2px}
 .fa-cell{aspect-ratio:1;border-radius:8px;background:#3a2c22 center/cover no-repeat;border:1px solid rgba(120,90,50,.5);display:flex;align-items:center;justify-content:center;color:#a88;font-weight:700}
 .fa-cell.on{border-color:#c9a45a;box-shadow:0 0 0 1px rgba(201,164,90,.35)}
+/* ===== v14: карьера, сюжет, кат-сцены ===== */
+.car14 { padding: 8px 10px; margin: 6px 8px; border: 1.5px solid #b08a4a; }
+.car14.ready { box-shadow: 0 0 0 2px var(--gold), 0 0 14px rgba(240,194,85,.6); animation: car14glow 2s ease-in-out infinite; }
+@keyframes car14glow { 50% { box-shadow: 0 0 0 2px var(--amber2), 0 0 4px rgba(240,194,85,.3); } }
+.car14-h { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.car14-st { font-weight: 700; font-size: 14px; color: var(--ink2); cursor: pointer; }
+.car14-st i { font-style: normal; color: var(--amber); }
+.car14-d { font-size: 11px; color: #7a5a3a; white-space: nowrap; }
+.car14-bar { height: 7px; border-radius: 5px; background: #e6d3a8; border: 1px solid #8a6438; overflow: hidden; margin: 4px 0; }
+.car14-bar i { display: block; height: 100%; background: linear-gradient(90deg, #6f8a4f, #c9b24a, #f0c255); transition: width .6s; }
+.car14-chips { display: flex; flex-wrap: wrap; gap: 3px; margin: 2px 0 4px; }
+.cchip { font-size: 10.5px; padding: 1px 5px; border-radius: 8px; background: rgba(164,71,58,.12); border: 1px solid rgba(164,71,58,.35); white-space: nowrap; }
+.cchip.ok { background: rgba(111,138,79,.22); border-color: var(--sage); }
+.car14-hint { color: #5a3e26; line-height: 1.3; }
+.car14-b { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+.car14-b .btn { padding: 4px 8px; font-size: 12px; min-height: 0; }
+.car14-rep { margin: 8px 0; padding: 6px 8px; border-radius: 8px; background: rgba(240,194,85,.12); border: 1px dashed #b08a4a; }
+.car14-rep .report li.car { color: #4a3420; }
+.cst14 { display: flex; gap: 8px; padding: 6px 4px; border-bottom: 1px dotted #b08a4a; opacity: .7; }
+.cst14 > b { width: 22px; height: 22px; flex: none; border-radius: 50%; display: grid; place-items: center; background: #e3c995; border: 1px solid #8a6438; font-size: 12px; }
+.cst14.done { opacity: 1; } .cst14.done > b { background: var(--sage2); color: #fff; }
+.cst14.next { opacity: 1; background: rgba(240,194,85,.15); border-radius: 6px; } .cst14.next > b { background: var(--gold); }
+.cst14-n { font-weight: 700; }
+.cneed14 { list-style: none; padding: 0; margin: 4px 0; font-size: 12.5px; } .cneed14 li.ok { color: #4f6a33; }
+.wn14 ol { padding-left: 18px; } .wn14 li { margin-bottom: 6px; line-height: 1.35; }
+.cs14-box { padding: 0 !important; overflow-x: hidden; }
+.cs14-box .modal-title:empty { display: none; }
+.cs14-box .modal-body { padding: 0; }
+.cs14-box .btn-row { padding: 0 12px 12px; }
+.cs14-art { position: relative; height: 190px; background: var(--csbg) center/cover; display: flex; flex-direction: column; justify-content: flex-end; padding: 12px 14px; color: #fbe9c0; animation: cs14zoom 9s ease-out both; overflow: hidden; }
+.cs14-art::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,10,4,0) 30%, rgba(20,10,4,.85)); }
+.cs14-art > * { position: relative; }
+.cs14-art.sm { height: 130px; margin: -2px 0 8px; }
+@keyframes cs14zoom { from { background-size: 118%; } to { background-size: 100%; } }
+.cs14-art.sm { animation: none; }
+.cs14-k { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); }
+.cs14-t { font-size: 21px; font-weight: 700; text-shadow: 0 2px 6px #000; }
+.cs14-txt { padding: 10px 14px 2px; }
+.cs14-txt p { opacity: 0; animation: cs14in .7s ease-out forwards; line-height: 1.45; margin: 0 0 8px; }
+@keyframes cs14in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.cs14 .mchips { padding: 0 14px 8px; display: flex; flex-wrap: wrap; gap: 4px; }
+.cs14-ev .modal-body > .xev { padding: 0 14px; }
+.cs-note { margin-top: 8px; font-size: 12px; padding: 4px 8px; border-left: 3px solid var(--amber); background: rgba(240,194,85,.12); }
