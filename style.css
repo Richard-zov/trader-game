@@ -905,3 +905,16 @@ details.why td small { display: block; font-size: 10.5px; opacity: .7; font-weig
 .arc14.br { background: rgba(165, 72, 58, .1); border-color: rgba(165, 72, 58, .4); }
 .arc14.br .arc14-s { color: #a5483a; }
 .arc14.done { background: rgba(217, 161, 58, .22); }
+/* v14.4 наследие */
+.lg14-pts{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.lg14-pts b{font-size:1.15em;color:#7a4b12}
+.lg14-hist summary{cursor:pointer;font-size:.9em;margin:4px 0}
+.lg14-sc{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:4px 0 8px}
+.lg14-card{display:flex;flex-direction:column;gap:2px;text-align:left;padding:7px 8px;border-radius:10px;border:1px solid rgba(120,80,30,.35);background:rgba(255,248,230,.75);font:inherit;color:inherit;min-height:64px}
+.lg14-card small{font-size:.76em;opacity:.85;line-height:1.25}
+.lg14-card.sel{border-color:#b8741c;box-shadow:0 0 0 2px rgba(214,150,50,.45);background:#fff4d8}
+.lg14-card.locked{opacity:.55;filter:grayscale(.5)}
+.lg14-perks{display:flex;flex-direction:column;gap:5px;margin-top:4px}
+.lg14-pk{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 7px;border-radius:8px;background:rgba(255,248,230,.6)}
+.lg14-pk .btn{flex:none}
+.lg14-pk .btn.disabled{opacity:.5}

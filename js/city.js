@@ -1,6 +1,6 @@
 'use strict';
 // ===== v11: город — районы, участки, стройка, соседства, события, «Шёлковая лента», Большой невольничий рынок =====
-const CITY_VER = 'v14.3';
+const CITY_VER = 'v14.4';
 const DEF_SLOTS = [0, 1, 2, 2, 3, 4];
 const BT = {
   market: { n: 'Рынок', cat: 'inc', d: 'Прилавки и навесы: торговля с горожанами.', st: ['cha', 'int'], tr: ['charming', 'clever'], base: 62, cost: 600, days: 2, max: 1, roof: '#b5523a' },
