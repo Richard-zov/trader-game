@@ -21,7 +21,7 @@ const CSTAGES = [
     need: [['cap', 9000], ['rep', 28], ['res', 7], ['qual', 2], ['bld', 4], ['ch', 3], ['tr', 't2']], gold: 1500, repR: 4, un: ['auction'],
     cs: ['Гильдия присылает вам грамоту мастера: пергамент, лента и печать размером с блин.', 'Торговки на причале теперь здороваются первыми, а мальчишки спорят, сколько у вас сундуков. Цифры растут быстрее ваших доходов.', 'Ставрак присылает поздравительную открытку. На обороте — прайс-лист его лавки. Со скидкой «для коллег».'] },
   { n: 'Старшина торгового ряда', t: 'Вас слушают. Иногда даже не перебивая.', bg: 'bg02',
-    need: [['cap', 15000], ['rep', 42], ['res', 8], ['lvs', 10], ['mood', 55], ['ch', 4], ['ch', 5]], gold: 2400, repR: 5, un: ['elder'],
+    need: [['cap', 15000], ['rep', 42], ['res', 8], ['lvs', 10], ['mood', 50], ['ch', 4], ['ch', 5]], gold: 2400, repR: 5, un: ['elder', 'trial3'],
     cs: ['Старшину ряда выбирают в таверне «Пьяный улей», под громкие тосты и тихие подсчёты.', 'Вам вручают дубовый молоток. Им полагается стучать по столу, когда спор заходит слишком далеко. Спорщики сразу становятся вежливее — молоток тяжёлый.', 'Где-то в углу Ставрак поднимает кружку в вашу честь. Улыбается. Слишком широко.'] },
   { n: 'Советник гильдии', t: 'Кресло в совете, мягкое — и немного горячее', bg: 'bg10',
     need: [['cap', 24000], ['rep', 60], ['res', 10], ['qual', 4], ['bld', 6], ['ch', 6], ['tr', 't3']], gold: 3500, repR: 6, un: ['council'],
@@ -30,8 +30,8 @@ const CSTAGES = [
     need: [['cap', 35000], ['rep', 80], ['ch', 7]], gold: 5000, repR: 10, un: ['end'] },
 ];
 const UNLOCK_N = {
-  trials: 'Испытания гильдии: «Испытание прилавка»', steward: 'Управляющий из числа жителей', loan: 'Гильдейский кредит (до 3 займов)', trial2: '«Испытание порядка»',
-  auction: 'Право первого голоса на аукционе: комиссия −2%', elder: 'Печать старшины: торговля +8%', council: 'Место в совете: недельный сбор −25%, «Испытание доверия»', end: 'Эпилог и очки наследия',
+  trials: 'Испытания гильдии: «Испытание прилавка»', steward: 'Управляющий из числа жителей', loan: 'Банк гильдии: займы с еженедельными платежами', trial2: '«Испытание порядка»',
+  auction: 'Право первого голоса на аукционе: комиссия −2%', elder: 'Печать старшины: торговля +8%', council: 'Место в совете: недельный сбор гильдии −25%', trial3: '«Испытание доверия»', end: 'Эпилог и очки наследия',
 };
 const NEED_N = { cap: 'Капитал', rep: 'Репутация', res: 'Жителей в поместье', qual: 'Редких и лучше', bld: 'Построек', lvs: 'Сумма уровней построек', mood: 'Среднее настроение' };
 
@@ -85,8 +85,8 @@ function hasUnlock(u) { const C = carOf(); for (let i = 1; i <= C.stage; i++) if
 // ---------- испытания гильдии ----------
 const TRIALS = {
   t1: { n: 'Испытание прилавка', u: 'trials', days: 7, fee: 100, d: 'За 7 дней заработать чистыми 1500 мон. (по итогам дней).', need: 1500, prog: T => T.sum || 0 },
-  t2: { n: 'Испытание порядка', u: 'trial2', days: 7, fee: 200, d: 'Все 7 вечеров среднее настроение в поместье не ниже 55, никто не сбегает и не бунтует; жителей не меньше 6.', need: 7, prog: T => T.ok || 0, pre: () => S.owned.length >= 6 || 'нужно 6 жителей' },
-  t3: { n: 'Испытание доверия', u: 'council', days: 10, fee: 400, d: 'За 10 дней поднять репутацию на 8 и закончить без просроченных долгов.', need: 8, prog: T => S.rep - (T.rep0 || S.rep) },
+  t2: { n: 'Испытание порядка', u: 'trial2', days: 7, fee: 200, d: 'Все 7 вечеров среднее настроение в поместье не ниже 50, никто не сбегает и не бунтует; жителей не меньше 6.', need: 7, prog: T => T.ok || 0, pre: () => S.owned.length >= 6 || 'нужно 6 жителей' },
+  t3: { n: 'Испытание доверия', u: 'trial3', days: 10, fee: 400, d: 'За 10 дней поднять репутацию на 8 и закончить без просроченных долгов.', need: 8, prog: T => S.rep - (T.rep0 || S.rep) },
 };
 function trialState(id) { return carOf().tr[id] || null; }
 function trialAvail(id) { const T = TRIALS[id], st = trialState(id); if (!hasUnlock(T.u)) return 'откроется со званием'; if (st && st.st === 'ok') return 'пройдено'; if (st && st.st === 'run') return 'идёт'; if (st && st.retry > S.day) return `повтор с дня ${st.retry}`; if (T.pre) { const p = T.pre(); if (p !== true) return p; } return S.gold >= T.fee || `нужно ${T.fee} мон.`; }
@@ -102,7 +102,7 @@ function trialsDayEnd(lines, dayNet) {
   for (const id in C.tr) {
     const st = C.tr[id], T = TRIALS[id]; if (st.st !== 'run') continue;
     if (id === 't1') st.sum += dayNet;
-    if (id === 't2') { if (S.owned.length < 6) st.fail = 'жителей меньше шести'; else if (avgMood() >= 55 && !st.fail) st.ok++; else if (!st.fail) st.fail = 'среднее настроение опустилось ниже 55'; }
+    if (id === 't2') { if (S.owned.length < 6) st.fail = 'жителей меньше шести'; else if (avgMood() >= 50 && !st.fail) st.ok++; else if (!st.fail) st.fail = 'среднее настроение опустилось ниже 50'; }
     if (id === 't3' && S.debt > debtLimit()) st.fail = 'долг превысил лимит';
     const p = T.prog(st);
     if (!st.fail && p >= T.need) { trialPass(id, lines); continue; }
@@ -330,7 +330,7 @@ let _c14lines = [];
       const N = nextStage();
       if (N && stageReady() && !C.ready) { L.push(`★ Все условия звания «${N.n}» выполнены — примите его на панели «Карьера».`); C.ready = true; }
       if (!stageReady()) C.ready = false;
-      const sid = storyNext(); if (sid) { S.xev = { id: sid, when: 'night' }; }
+      const sid = storyNext(); const rq = S.xev && XEV.find(z => z.id === S.xev.id && z.risk); if (sid && !rq) { S.xev = { id: sid, when: 'night' }; }
       save();
     } catch (e) { console.warn('c14 end', e); }
     return r;
@@ -350,7 +350,7 @@ let _c14lines = [];
   const oShow = window.xShow;
   window.xShow = function () {
     const r = oShow.apply(this, arguments);
-    try { const q = S.xev; const e = q && XEV.find(z => z.id === q.id); if (e && e.story) { const box = document.querySelector('#modal .modal-box'); if (box && !box.classList.contains('cs14-box')) { box.classList.add('cs14-box', 'cs14-ev'); const b = box.querySelector('.modal-body'); if (b) b.insertAdjacentHTML('afterbegin', `<div class="cs14-art sm" style="--csbg:url('assets/backgrounds/${e.bg || 'bg06'}.jpg')"><div class="cs14-k">${esc(e.title.split(' · ')[0])}</div><div class="cs14-t">${esc(e.title.split(' · ')[1] || '')}</div></div>`); } } } catch (er) { }
+    try { const q = S.xev; const e = q && XEV.find(z => z.id === q.id); if (e && (e.story || e.cs)) { const box = document.querySelector('#modal .modal-box'); if (box && !box.classList.contains('cs14-box')) { box.classList.add('cs14-box', 'cs14-ev'); const b = box.querySelector('.modal-body'); if (b) b.insertAdjacentHTML('afterbegin', `<div class="cs14-art sm" style="--csbg:url('assets/backgrounds/${e.bg || 'bg06'}.jpg')"><div class="cs14-k">${esc(e.title.split(' · ')[0])}</div><div class="cs14-t">${esc(e.title.split(' · ')[1] || '')}</div></div>`); } } } catch (er) { }
     return r;
   };
   const oChoose = window.xChoose;
