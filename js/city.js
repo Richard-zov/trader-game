@@ -1,6 +1,6 @@
 'use strict';
 // ===== v11: город — районы, участки, стройка, соседства, события, «Шёлковая лента», Большой невольничий рынок =====
-const CITY_VER = 'v11';
+const CITY_VER = 'v12';
 const DEF_SLOTS = [0, 1, 2, 2, 3, 4];
 const BT = {
   market: { n: 'Рынок', cat: 'inc', d: 'Прилавки и навесы: торговля с горожанами.', st: ['cha', 'int'], tr: ['charming', 'clever'], base: 62, cost: 600, days: 2, max: 1, roof: '#b5523a' },
@@ -114,6 +114,8 @@ function cityCore() {
   const tight = S.owned.length - S.capacity + 1; if (tight > 0) add(hp, 'теснота', -4 * tight);
   add(sf, 'караульни', 10 * lvOf('guard')); add(sf, 'стражники', 3 * S.owned.filter(c => c.bld && E.b[c.bld] && E.b[c.bld].t === 'guard').length);
   add(sf, 'таверна', -3 * lvOf('tavern')); add(sf, '«Шёлковая лента»', -(POLICY[E.pol].safe / 2) * lvOf('brothel')); add(sf, 'Большой рынок', -5 * lvOf('slavemkt')); add(sf, 'рынок', -2 * lvOf('market'));
+  { const g4 = bList().filter(([, b]) => b.t !== 'slavemkt' && b.lv === 4).length, g5 = bList().filter(([, b]) => b.t !== 'slavemkt' && b.lv >= 5).length;
+    add(pr, 'парадные фасады (ур. 4–5)', 2 * g4 + 4 * g5); add(hp, 'имперская роскошь (ур. 5)', 2 * g5); }
   add(sf, 'размер города', -4 * (Object.keys(E.dist).length - 1));
   for (const md of E.mods || []) if (md.until >= S.day) add({ prest: pr, happy: hp, safe: sf }[md.k], md.n, md.v);
   const sum = a => clamp(Math.round(a.reduce((x, y) => x + y[1], 0)), 0, 100);
@@ -126,6 +128,7 @@ function bldWorkerOut(c, id, core) {
   let m = clamp(sv / 28, 0.45, 2.4); why.push([`${statName(B.st[0])}+${statName(B.st[1])} ${Math.round(sv)}`, m]);
   if (sv < req) { why.push([`ниже требования ${req}`, 0.6]); m *= 0.6; }
   const lm = 1 + 0.4 * (lv - 1); why.push([`уровень ${lv}`, lm]); m *= lm;
+  if (lv >= 3 && b.t !== 'slavemkt') { why.push([lv >= 5 ? 'имперская утварь' : 'добротная утварь', lv >= 5 ? 1.1 : 1.05]); m *= lv >= 5 ? 1.1 : 1.05; }
   for (const t of B.tr) if (has(c, t)) { why.push([TRAITS[t].name, 1.25]); m *= 1.25; }
   if (has(c, 'lazy')) { why.push(['Лень', 0.85]); m *= 0.85; }
   if (has(c, 'clumsy') && (b.t === 'workshop' || b.t === 'quarry')) { why.push(['Неуклюжесть', 0.85]); m *= 0.85; }
