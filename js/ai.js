@@ -685,7 +685,7 @@ const VOICE = (() => {
     if (AI.cfg.nv && AI.hasKey()) { neural(c, txt, expr || VOICE.lastExpr || 'smile').catch(() => { if (TTS.ok) browser(c, txt); }); return; }
     if (TTS.ok) browser(c, txt);
   }
-  return { st, saveV, speak, ranked, ruVoices, nvVoice, NV_F, NV_M, NV_DESC, stopAll, lastExpr: null, b64blob, clean };
+  return { st, saveV, speak, ranked, ruVoices, nvVoice, NV_F, NV_M, NV_DESC, stopAll, lastExpr: null, b64blob, clean, _browser: browser };
 })();
 // подменяем старую озвучку v7 новой
 try { TTS.speak = (c, line, expr) => VOICE.speak(c, line, expr); } catch (e) { }

@@ -791,3 +791,12 @@ details.why td small { display: block; font-size: 10.5px; opacity: .7; font-weig
 .agr-sub { margin-top: 8px; }
 .ai-agr { margin: 4px 0; }
 .ai-agr a { color: #7a3f12; }
+/* v12: голоса */
+.vo-ch { border-top: 1px dashed rgba(90, 60, 30, .3); padding: 4px 0; }
+.vo-ch summary { cursor: pointer; font-size: 14px; }
+.vo-ch select { width: 100%; font-size: 13px !important; }
+.vo-lv { display: flex; gap: 6px; align-items: center; justify-content: space-between; margin-top: 4px; font-size: 13px; }
+.vo-lv span { flex: 1; }
+.vo-bar { display: inline-block; width: 90px; height: 8px; border-radius: 4px; background: rgba(90, 60, 30, .2); vertical-align: middle; overflow: hidden; }
+.vo-bar i { display: block; height: 100%; background: #b8862e; }
+#vo-eng, #vo-nvm { width: 100%; }
