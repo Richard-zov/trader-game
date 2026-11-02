@@ -55,12 +55,11 @@ const Anim = (() => {
   // старые имена реакций → кадры атласа
   const EXPR_ALIAS = { smile: 'happy', blush: 'shy', frown: 'angry', back: 'sad', neutral: null, calm: null };
   const EXPR_ALPHA = { tired: 0.78 };
-  async function exprLayer(c, name) {
-    if (!name || !c.em) return null;
-    const j = EXPR_IDX[name]; if (j == null || c.em.ch.ok[j] !== '1') return null;
-    if (c.exprCache[name]) return c.exprCache[name];
-    const atlas = await loadImg(`assets/expr/${c.em.k.c}.webp`); if (!atlas || !cur || cur !== c) return null;
-    const { x, y, w, h } = c.em.ch, [a, b, tx, ty] = c.em.k.m, gn = c.em.k.g || [1, 1, 1];
+  // новые лица (v13): атлас assets/faces/<id>.webp, ячейки: happy,shy,sad,angry,NEUTRAL,surprised,flushed,wink,tired
+  const FACE_IDX = { happy: 0, shy: 1, sad: 2, angry: 3, __neutral: 4, surprised: 5, flushed: 6, wink: 7, tired: 8, sleepy: 8 };
+  function faceOf(id, em) { const F = id && typeof FACE_META !== 'undefined' && FACE_META[id]; return F && em && em.k.c === F.c ? Object.assign({ id }, F) : null; }
+  function buildLayer(atlas, j, em, W, meta, name) {
+    const { x, y, w, h } = em.ch, [a, b, tx, ty] = em.k.m, gn = em.k.g || [1, 1, 1];
     // кадр с поправкой цвета под этот наряд/освещение
     const cell = document.createElement('canvas'); cell.width = w; cell.height = h;
     const cx = cell.getContext('2d'); cx.drawImage(atlas, j * w, 0, w, h, 0, 0, w, h);
@@ -70,16 +69,32 @@ const Anim = (() => {
       cx.putImageData(id, 0, 0);
     }
     // в координатах холста: base → key (m) → холст (s)
-    const s = c.W / c.meta.w;
+    const s = W / meta.w;
     const M = [a * s, b * s, -b * s, a * s, (a * x - b * y + tx) * s, (b * x + a * y + ty) * s];
-    // габариты слоя
     const pts = [[0, 0], [w, 0], [0, h], [w, h]].map(([u, v]) => [M[0] * u + M[2] * v + M[4], M[1] * u + M[3] * v + M[5]]);
     const X0 = Math.floor(Math.min(...pts.map(p => p[0]))) - 1, Y0 = Math.floor(Math.min(...pts.map(p => p[1]))) - 1;
     const X1 = Math.ceil(Math.max(...pts.map(p => p[0]))) + 1, Y1 = Math.ceil(Math.max(...pts.map(p => p[1]))) + 1;
     const lay = document.createElement('canvas'); lay.width = Math.max(1, X1 - X0); lay.height = Math.max(1, Y1 - Y0);
     const lx = lay.getContext('2d'); lx.setTransform(M[0], M[1], M[2], M[3], M[4] - X0, M[5] - Y0); lx.imageSmoothingQuality = 'high'; lx.drawImage(cell, 0, 0);
-    const L = { cv: lay, x: X0, y: Y0, cy: (Y0 + Y1) / 2, alpha: EXPR_ALPHA[name] || 1, name };
+    return { cv: lay, x: X0, y: Y0, cy: (Y0 + Y1) / 2, alpha: EXPR_ALPHA[name] || 1, name };
+  }
+  async function exprLayer(c, name) {
+    if (!name || !c.em) return null;
+    let j, src;
+    if (c.face) { j = FACE_IDX[name]; if (j == null || c.face.ok[j] !== '1') return null; src = `assets/faces/${c.face.id}.webp`; }
+    else { j = EXPR_IDX[name]; if (j == null || c.em.ch.ok[j] !== '1') return null; src = `assets/expr/${c.em.k.c}.webp`; }
+    if (c.exprCache[name]) return c.exprCache[name];
+    const atlas = await loadImg(src); if (!atlas || !cur || cur !== c) return null;
+    const L = buildLayer(atlas, j, c.em, c.W, c.meta, name);
     c.exprCache[name] = L; return L;
+  }
+  // нейтральное лицо из атласа (для запекания в базу и миниатюр)
+  async function faceNeutral(id, key, W) {
+    const meta = typeof ART_META !== 'undefined' && ART_META[key];
+    const em = meta && typeof EXPR_META !== 'undefined' && EXPR_META.keys[key] ? { k: EXPR_META.keys[key], ch: EXPR_META.chars[EXPR_META.keys[key].c] } : null;
+    const F = faceOf(id, em); if (!F || F.ok[4] !== '1') return null;
+    const atlas = await loadImg(`assets/faces/${id}.webp`); if (!atlas) return null;
+    return buildLayer(atlas, 4, em, W, meta, '__neutral');
   }
   async function setExpr(name, ms) {
     const c = cur; if (!c) return;
@@ -108,7 +123,7 @@ const Anim = (() => {
     if (!img || !meta) return;
     decorate(box, meta);
     const live = enabled();
-    const base = await loadImg(img.getAttribute('src'));
+    const base = await loadImg(img.dataset.src0 || img.getAttribute('src'));
     if (!base || !box.isConnected) return;
     const rect = box.getBoundingClientRect();
     if (!rect.width) return;
@@ -119,6 +134,8 @@ const Anim = (() => {
     const off = document.createElement('canvas'); off.width = W; off.height = H;
     const o = off.getContext('2d');
     o.drawImage(base, 0, 0, W, H);
+    const faceId = box.dataset.face || null;
+    if (faceId) { const FL = await faceNeutral(faceId, key, W); if (FL) o.drawImage(FL.cv, FL.x, FL.y); }
     // хвост — отдельный слой: под ним дорисованный фон, сам он качается от корня
     let tail = null;
     if (rig && rig.tail && live) {
@@ -155,7 +172,7 @@ const Anim = (() => {
       arms = { a0, a1: Math.max(a1, hb), n: rig.L.length, L: rig.L.map(v => v * W), R: rig.R.map(v => v * W), bcx: rig.bcx * W, span: a1 - a0 };
     }
     cur = {
-      box, cv, ctx: cv.getContext('2d'), off, W, H, meta, rig, arms, tail, em, live, key,
+      face: faceOf(faceId, em), box, cv, ctx: cv.getContext('2d'), off, W, H, meta, rig, arms, tail, em, live, key,
       headTop, headH, headW, neckY, shoulderY, waistY, crotchY, md,
       beast: box.dataset.race === 'beast', ph: Math.random() * 6,
       tilt: spring(0, 40), nod: spring(0, 70), armL: spring(0, 25), armR: spring(0, 25), hip: spring(0, 18), shrug: spring(0, 60), lean: spring(0, 35), squish: spring(0, 90),
@@ -463,5 +480,5 @@ const Anim = (() => {
   function pet(uid, strength, liked) { touch(uid, 'head', strength, liked); }
   function setMood(md) { if (cur) { cur.md = md; cur.droop = md === 'tired' ? 1 : md === 'sad' ? 0.6 : 0; } }
   function redecorate() { if (cur) decorate(cur.box, cur.meta); }
-  return { mount, stop, pet, touch, play, setExpr, setMood, zoneGeom, redecorate, enabled, setEnabled, ease, EMO_SVG: EMO };
+  return { faceNeutral, mount, stop, pet, touch, play, setExpr, setMood, zoneGeom, redecorate, enabled, setEnabled, ease, EMO_SVG: EMO };
 })();

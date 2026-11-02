@@ -832,3 +832,7 @@ details.why td small { display: block; font-size: 10.5px; opacity: .7; font-weig
 .grade.past { opacity: .7; }
 .grade.next { border-style: dashed; border-color: #c9a25a; }
 .city-frame svg text{pointer-events:none}
+/* v13: альбом лиц */
+.fa-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;max-height:52vh;overflow:auto;padding:2px}
+.fa-cell{aspect-ratio:1;border-radius:8px;background:#3a2c22 center/cover no-repeat;border:1px solid rgba(120,90,50,.5);display:flex;align-items:center;justify-content:center;color:#a88;font-weight:700}
+.fa-cell.on{border-color:#c9a45a;box-shadow:0 0 0 1px rgba(201,164,90,.35)}
