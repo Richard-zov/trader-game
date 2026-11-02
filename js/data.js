@@ -158,6 +158,7 @@ const OUTFIT_ART = {
   f21: ['maid', 'robe', 'work'],
   f22: ['maid', 'peasant', 'work'],
   f23: ['robe', 'travel', 'work'],
+  f24: ['robe', 'noble', 'travel', 'dress', 'corset', 'night', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
   m01: ['noble', 'travel', 'work', 'swim', 'night', 'corset'],
   m02: ['noble', 'peasant', 'robe'],
   m03: ['noble', 'robe', 'travel', 'swim', 'night', 'corset'],
@@ -213,6 +214,8 @@ const PRESETS = [
   { id: 'f21', g: 'f', race: 'dwarf', title: 'Ювелирша', names: ['Дагни', 'Ингрид', 'Сигрун'], skin: '#f0c8a0', hairC: '#e0c060', hair: 4, eyes: '#3a7a6a', outfit: '#3e5c5a' },
   { id: 'f22', g: 'f', race: 'dwarf', title: 'Шахтёрская повариха', names: ['Ольда', 'Фрея', 'Гудрун'], skin: '#d9a07a', hairC: '#4a2a1a', hair: 3, eyes: '#5a4030', outfit: '#5a3a2a' },
   { id: 'f23', g: 'f', race: 'dwarf', title: 'Изобретательница', names: ['Тильда', 'Бетти', 'Хельга'], skin: '#f2cfae', hairC: '#7a6a6a', hair: 2, eyes: '#c07a2a', outfit: '#2f4f6b' },
+  // v12: уникальная легендарная героиня — не выпадает из обычного пула (см. liisbet12.js)
+  { id: 'f24', g: 'f', race: 'dwarf', unique: 'liisbet', title: 'Легендарная учёная', names: ['Лиисбет'], skin: '#f2d2b8', hairC: '#eeeeee', hair: 1, eyes: '#6a8aa8', outfit: '#2f4f8b' },
 ];
 
 const ITEMS = {

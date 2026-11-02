@@ -259,7 +259,7 @@ function aiSystem(c) {
   const tod = { morning: 'утро', day: 'день', evening: 'вечер', night: 'ночь' }[document.body.dataset.tod] || 'день';
   const mem = (c.mem || []).slice(-8).map(x => `д.${x.d}: ${x.t}`).join('\n');
   const ch = chatLoad(c.uid);
-  return `Ты — ${c.name}, персонаж уютной фэнтези-игры «Торговец из Медового Лога» (поместье торговца, ярмарка, ремёсла). Говори только как этот персонаж, живым естественным русским языком, 1–3 коротких предложения (до 300 знаков). Можно короткие ремарки действия в звёздочках, например *улыбается*. Ты помнишь весь разговор и выполняешь то, о чём договорились раньше.
+  return `Ты — ${c.name}, персонаж уютной фэнтези-игры «Торговец из Медового Лога» (поместье торговца, ярмарка, ремёсла). Говори только как этот персонаж, живым естественным русским языком, ${c.unique === 'liisbet' ? '3–6 предложений: развёрнуто, тепло и вдумчиво, с примером или идеей (до 750 знаков)' : '1–3 коротких предложения (до 300 знаков)'}. Можно короткие ремарки действия в звёздочках, например *улыбается*. Ты помнишь весь разговор и выполняешь то, о чём договорились раньше.
 Собеседник — ${fem ? 'твоя хозяйка' : 'твой хозяин'}. Обращайся к ${fem ? 'ней' : 'нему'} на «вы»: «${G}» или «${H}», почтительно и послушно, но со своим характером и чувствами.
 О тебе: ${c.g === 'm' ? 'мужчина' : 'женщина'}, раса — ${race}, взросл${g(c, 'ый', 'ая')} (${c.age} ${plural(c.age, 'год', 'года', 'лет')}). ${c.title}. ${bioOf(c)}
 Манера речи: ${speechOf(c)}.
@@ -511,7 +511,7 @@ async function aiFlush() {
   AIC.busy = false;
   if (AIC.uid !== uid) return;
   if (r) {
-    r.reply = String(r.reply).replace(/\s+/g, ' ').trim().slice(0, 420);
+    r.reply = String(r.reply).replace(/\s+/g, ' ').trim().slice(0, c.unique === 'liisbet' ? 800 : 420);
     const fx = aiApply(c, r, userText);
     r.reply = agrEnforce(c, r.reply);
     const ch2 = chatLoad(uid); ch2.msgs.push({ r: 'a', t: r.reply, fx }); ch2.n = (ch2.n || 0) + 1; chatSave(uid, ch2);
@@ -580,7 +580,7 @@ const VOICE = (() => {
   const saveV = () => { try { localStorage.setItem(K, JSON.stringify(st)); } catch (e) { } };
   const NV_F = ['Leda', 'Achernar', 'Sulafat', 'Vindemiatrix', 'Aoede', 'Despina', 'Callirrhoe', 'Autonoe', 'Zephyr', 'Kore', 'Erinome', 'Laomedeia', 'Gacrux', 'Pulcherrima'];
   const NV_M = ['Puck', 'Charon', 'Orus', 'Algieba', 'Achird', 'Iapetus', 'Algenib', 'Umbriel', 'Fenrir', 'Rasalgethi', 'Alnilam', 'Schedar', 'Zubenelgenubi', 'Sadachbia', 'Sadaltager', 'Enceladus'];
-  const NV_PRESET = { f01: 'Leda', f02: 'Vindemiatrix', f03: 'Aoede', f04: 'Callirrhoe', f05: 'Gacrux', f06: 'Kore', f07: 'Autonoe', f08: 'Erinome', f09: 'Achernar', f10: 'Despina', f11: 'Sulafat', f12: 'Pulcherrima', f13: 'Laomedeia', f14: 'Zephyr', f15: 'Aoede', f16: 'Laomedeia', f17: 'Kore', f18: 'Despina', f19: 'Sulafat', f20: 'Gacrux', f21: 'Erinome', f22: 'Callirrhoe', f23: 'Autonoe', m01: 'Alnilam', m02: 'Iapetus', m03: 'Umbriel', m04: 'Charon', m05: 'Orus', m06: 'Algenib', m07: 'Algenib', m08: 'Achird' };
+  const NV_PRESET = { f24: 'Sulafat', f01: 'Leda', f02: 'Vindemiatrix', f03: 'Aoede', f04: 'Callirrhoe', f05: 'Gacrux', f06: 'Kore', f07: 'Autonoe', f08: 'Erinome', f09: 'Achernar', f10: 'Despina', f11: 'Sulafat', f12: 'Pulcherrima', f13: 'Laomedeia', f14: 'Zephyr', f15: 'Aoede', f16: 'Laomedeia', f17: 'Kore', f18: 'Despina', f19: 'Sulafat', f20: 'Gacrux', f21: 'Erinome', f22: 'Callirrhoe', f23: 'Autonoe', m01: 'Alnilam', m02: 'Iapetus', m03: 'Umbriel', m04: 'Charon', m05: 'Orus', m06: 'Algenib', m07: 'Algenib', m08: 'Achird' };
   const NV_DESC = { Zephyr: 'яркий', Puck: 'бодрый', Charon: 'ровный', Kore: 'твёрдый', Fenrir: 'живой', Leda: 'юный', Orus: 'твёрдый', Aoede: 'лёгкий', Callirrhoe: 'спокойный', Autonoe: 'яркий', Enceladus: 'с придыханием', Iapetus: 'чистый', Umbriel: 'спокойный', Algieba: 'бархатный', Despina: 'бархатный', Erinome: 'чистый', Algenib: 'хрипловатый', Rasalgethi: 'ровный', Laomedeia: 'бодрый', Achernar: 'мягкий', Alnilam: 'твёрдый', Schedar: 'ровный', Gacrux: 'зрелый', Pulcherrima: 'напористый', Achird: 'дружелюбный', Zubenelgenubi: 'простой', Vindemiatrix: 'нежный', Sadachbia: 'живой', Sadaltager: 'учёный', Sulafat: 'тёплый' };
   function nvVoice(c) {
     if (st.per[c.uid] && st.per[c.uid].nv) return st.per[c.uid].nv;

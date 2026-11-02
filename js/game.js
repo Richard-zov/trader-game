@@ -139,7 +139,7 @@ function rollAge(race) {
   return rint(19, 46);
 }
 function makeCharacter(opts = {}) {
-  const p = opts.preset ? presetById(opts.preset) : pick(PRESETS.filter(p => p.g === (opts.g || (R() < 0.35 ? 'm' : 'f')) && (!opts.race || p.race === opts.race)));
+  const p = opts.preset ? presetById(opts.preset) : pick(PRESETS.filter(p => !p.unique && p.g === (opts.g || (R() < 0.35 ? 'm' : 'f')) && (!opts.race || p.race === opts.race)));
   const gender = p.g;
   const race = RACES[p.race];
   const rarity = opts.rarity != null ? opts.rarity : rollRarity(opts.rarBonus || 0);
@@ -170,6 +170,7 @@ function makeCharacter(opts = {}) {
     aff: rint(5, 25), heatOff: rint(0, 11), heatCare: 0, closeDay: 0, touch: null,
   };
   c.gear = opts.noGear ? [] : rollGear(p.id, rarity);
+  if (p.unique) c.unique = p.unique;
   syncLook(c);
   return c;
 }
