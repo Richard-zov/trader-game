@@ -9,6 +9,7 @@ function arcReady(c, k) {
   if ((c.loyalty || 0) < ARC_LOY[k]) return false;
   return c.status === 'home' || c.status === undefined;
 }
+const arcActive = () => (S.owned || []).filter(c => c.arc && !c.arc.br && c.arc.s > 0 && c.arc.s < 3).length;
 const arcCool = () => { const C = S.car || {}; return S.day - (C.arcLast || 0) >= 3; };
 function arcStatus(c) {
   const A = arcOf(c), D = arcDef(c); if (!A) return '';
@@ -21,8 +22,8 @@ function arcStatus(c) {
   const mk = (pid, k) => {
     const D = ARC14[pid], st = D[4][k], cost = ARC_COST[k];
     return {
-      id: `arc_${pid}_${k}`, w: 8, when: k === 1 ? 'day' : 'night', arc: true,
-      cond: arcCool, who: c => c.preset === pid && arcReady(c, k),
+      id: `arc_${pid}_${k}`, w: k ? 12 : 4, when: k === 1 ? 'day' : 'night', arc: true,
+      cond: arcCool, who: c => c.preset === pid && arcReady(c, k) && (k > 0 || arcActive() < 2),
       title: `${st[0]}`, text: `<i>Мечта: ${D[0]}.</i><br>${st[1]}`,
       ch: [
         { l: `${st[2]} (${cost} мон.)`, ok: () => xCan(cost), go: (x, e) => {
