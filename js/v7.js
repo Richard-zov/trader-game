@@ -69,16 +69,4 @@ const TTS = (() => {
       return r;
     };
   }
-  // защита «травяной отвар» для работы в салоне
-  document.addEventListener('click', e => {
-    const a = e.target.closest && e.target.closest('[data-herbal]');
-    if (!a) return;
-    e.preventDefault(); e.stopPropagation();
-    const c = findOwned(a.dataset.herbal); if (!c) return;
-    c.herbal = !c.herbal;
-    sfx('pop');
-    toast(c.herbal ? `${fn1(c)} будет пить травяной отвар перед салоном (−${HERBAL_COST} мон. за вечер).` : `${fn1(c)} больше не пьёт отвар.`);
-    save();
-    if (document.getElementById('plan-go')) dayPlanModal(); else render();
-  }, true);
 })();

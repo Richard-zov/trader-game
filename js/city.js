@@ -1,6 +1,6 @@
 'use strict';
-// ===== v11: город — районы, участки, стройка, соседства, события, «Шёлковая лента», Большой невольничий рынок =====
-const CITY_VER = 'v14.5';
+// ===== v11: город — районы, участки, стройка, соседства, события, чайный дом «Шёлковая лента», Большая биржа найма =====
+const CITY_VER = 'v16';
 const DEF_SLOTS = [0, 1, 2, 2, 3, 4];
 const BT = {
   market: { n: 'Рынок', cat: 'inc', d: 'Прилавки и навесы: торговля с горожанами.', st: ['cha', 'int'], tr: ['charming', 'clever'], base: 62, cost: 600, days: 2, max: 1, roof: '#b5523a' },
@@ -8,13 +8,13 @@ const BT = {
   workshop: { n: 'Мастерская', cat: 'inc', d: 'Столярка и кузня. Даёт доход или инструменты для строек.', st: ['mas', 'agi'], tr: ['diligent', 'clever'], base: 66, cost: 800, days: 2, max: 2, roof: '#8a5a2e', store: 'tools' },
   farm: { n: 'Огород', cat: 'inc', d: 'Овощи и мёд: доход и дешевле еда в поместье.', st: ['end', 'wil'], tr: ['diligent', 'cheerful'], base: 48, cost: 450, days: 1, max: 3, roof: '#c9a23a', ter: 'garden' },
   tavern: { n: 'Таверна', cat: 'fun', d: 'Свой кабачок: песни, пироги, слухи. Иногда +репутация.', st: ['cha', 'luk'], tr: ['charming', 'cheerful'], base: 64, cost: 900, days: 2, max: 1, roof: '#9b3b2e', ter: 'river' },
-  brothel: { n: 'Дом утех «Шёлковая лента»', short: '«Шёлковая лента»', cat: 'fun', d: 'Изысканный дом свиданий: музыка, вино, приятная компания и много слухов. Доходно, но гильдия косится, а работникам нужен отдых и лекарь.', st: ['cha', 'agi'], tr: ['charming', 'cheerful'], base: 88, cost: 1500, days: 3, max: 1, roof: '#a64d79', slots: [0, 3, 4, 6, 7, 8] },
+  brothel: { n: 'Чайный дом «Шёлковая лента»', short: '«Шёлковая лента»', cat: 'fun', d: 'Нарядный чайный дом: заморский чай, пироги, музыка, настольные игры и городские новости. Доходно, но работа с гостями утомляет — нужен отдых.', st: ['cha', 'agi'], tr: ['charming', 'cheerful'], base: 88, cost: 1500, days: 3, max: 1, roof: '#a64d79', slots: [0, 3, 4, 6, 7, 8] },
   baths: { n: 'Купальни', cat: 'city', d: 'Тёплые купальни и лекарь: снимают стресс и лечат всех домашних.', st: ['wil', 'cha'], tr: ['loyal', 'hardy'], base: 34, cost: 1000, days: 2, max: 1, roof: '#3e7a8a', ter: 'river' },
   library: { n: 'Башня-библиотека', short: 'Библиотека', cat: 'city', d: 'Переписчики книг. Работники понемногу умнеют, район становится солиднее.', st: ['int', 'wil'], tr: ['clever', 'loyal'], base: 48, cost: 1100, days: 3, max: 1, roof: '#4a4f8a' },
   guard: { n: 'Караульня', cat: 'city', d: 'Стража района: меньше краж, пожары тушат быстрее.', st: ['str', 'wil'], tr: ['loyal', 'hardy'], base: 0, cost: 700, days: 2, max: 2, roof: '#5a6a7a', slots: [0, 1, 2, 2, 3, 3] },
   houses: { n: 'Жилища', cat: 'city', d: 'Уютные домики для ваших людей: +2 места в поместье за уровень и счастье.', noWork: true, cost: 500, days: 1, max: 3, roof: '#b07a3a' },
   park: { n: 'Сквер', cat: 'city', d: 'Липы, скамейки, фонтан. Счастье жителей и репутация района.', noWork: true, cost: 400, days: 1, max: 3, roof: '#5c8a3a', ter: 'garden' },
-  slavemkt: { n: 'Большой невольничий рынок', short: 'Большой рынок', cat: 'special', d: 'Свой огромный рынок: больше выбор, редкие люди, меньше комиссия, загон для перепродажи и дни распродаж. Заменяет старый рынок.', st: ['cha', 'int'], tr: ['clever', 'charming'], base: 90, cost: 0, days: 0, max: 1, roof: '#7a3a2a', slots: [0, 2, 3, 4], maxLv: 3 },
+  slavemkt: { n: 'Большая биржа найма', short: 'Биржа найма', cat: 'special', d: 'Своя биржа труда: больше соискателей, редкие мастера, ниже подъёмные, кадровый резерв и дни найма. Заменяет городскую биржу.', st: ['cha', 'int'], tr: ['clever', 'charming'], base: 90, cost: 0, days: 0, max: 1, roof: '#7a3a2a', slots: [0, 2, 3, 4], maxLv: 3 },
 };
 const CATS = { inc: 'Доход и ремёсла', city: 'Город и жители', fun: 'Увеселения', special: 'Особое' };
 const DISTRICTS = {
@@ -35,18 +35,18 @@ const TER_N = { hill: 'холм', river: 'у реки', garden: 'сады' };
 const ADJ = [
   ['tavern', 'market', 1.12, 'рядом рынок — толпа'], ['market', 'tavern', 1.08, 'рядом таверна'], ['brothel', 'baths', 1.15, 'рядом купальни'],
   ['brothel', 'tavern', 1.10, 'рядом таверна'], ['workshop', 'quarry', 1.12, 'камень под рукой'], ['tavern', 'farm', 1.10, 'свежие продукты'],
-  ['library', 'park', 1.12, 'тишина сквера'], ['market', 'slavemkt', 1.15, 'поток покупателей'], ['slavemkt', 'market', 1.10, 'рядом лавки'],
-  ['library', 'brothel', 0.88, 'соседство с «Лентой» мешает учёным'], ['brothel', 'guard', 1.05, 'спокойнее под охраной'], ['tavern', 'guard', 1.05, 'меньше драк'],
-  ['market', 'guard', 1.05, 'меньше краж'], ['baths', 'park', 1.10, 'зелень вокруг'], ['slavemkt', 'guard', 1.05, 'порядок на торгах'],
+  ['library', 'park', 1.12, 'тишина сквера'], ['market', 'slavemkt', 1.15, 'поток людей с биржи'], ['slavemkt', 'market', 1.10, 'рядом лавки'],
+  ['library', 'brothel', 0.88, 'шумные вечера «Ленты» мешают учёным'], ['brothel', 'guard', 1.05, 'спокойнее под охраной'], ['tavern', 'guard', 1.05, 'меньше драк'],
+  ['market', 'guard', 1.05, 'меньше краж'], ['baths', 'park', 1.10, 'зелень вокруг'], ['slavemkt', 'guard', 1.05, 'порядок у биржи'],
 ];
 const POLICY = {
-  salon: { n: 'Салон', d: 'Беседы, музыка, танцы — и только. Доход ×0.7, слухов мало, стресс +8, репутация района почти не страдает.', m: 0.7, st: 8, pr: 2, safe: 2 },
-  std: { n: 'Обычный дом', d: 'Доход ×1.0, стресс +14, репутация района −4 за уровень.', m: 1, st: 14, pr: 4, safe: 4 },
-  lavish: { n: 'Роскошь и тайные гости', d: 'Доход ×1.35, стресс +20, лояльность −1 в день, гильдия косится (риск −1 репутации), больше слухов и проверок.', m: 1.35, st: 20, pr: 7, safe: 6 },
+  salon: { n: 'Тихие чаепития', d: 'Чай, книги, шахматы. Доход ×0.7, стресс +8, соседи довольны.', m: 0.7, st: 8, pr: 0, safe: 1 },
+  std: { n: 'Обычные вечера', d: 'Музыка, пироги, игры. Доход ×1.0, стресс +14, шумновато: репутация района −2 за уровень.', m: 1, st: 14, pr: 2, safe: 3 },
+  lavish: { n: 'Пышные приёмы', d: 'Балы и заморские гости. Доход ×1.35, стресс +20, лояльность −1 в день (поздние смены), больше проверок гильдии.', m: 1.35, st: 20, pr: 4, safe: 5 },
 };
 const MKT = {
   buy: 25000, rank: 2,
-  stages: [{ n: 'Фундамент и загоны', g: 2500, stone: 40, tools: 0, pts: 150 }, { n: 'Галереи и помост', g: 3000, stone: 40, tools: 30, pts: 200 }, { n: 'Крытые ряды и контора', g: 4000, stone: 20, tools: 40, pts: 250 }],
+  stages: [{ n: 'Фундамент и приёмная', g: 2500, stone: 40, tools: 0, pts: 150 }, { n: 'Галереи и помост', g: 3000, stone: 40, tools: 30, pts: 200 }, { n: 'Крытые ряды и контора', g: 4000, stone: 20, tools: 40, pts: 250 }],
   up: [null, null, { g: 9000, stone: 30, tools: 20, pts: 120 }, { g: 16000, stone: 50, tools: 40, pts: 200 }],
   lots: [0, 4, 7, 10], disc: [0, 0.06, 0.10, 0.14], sell: [0, 0.04, 0.07, 0.10], stable: [0, 4, 8, 12], buyers: [0, 2, 3, 4], rare: [0, 0.15, 0.25, 0.35],
 };
@@ -106,14 +106,14 @@ function cityCore() {
   const lvOf = t => lvSum(t);
   const add = (arr, n, v) => { if (v) arr.push([n, Math.round(v)]); };
   add(pr, 'библиотека', 6 * lvOf('library')); add(pr, 'скверы', 5 * lvOf('park')); add(pr, 'купальни', 3 * lvOf('baths')); add(pr, 'рынок', 2 * lvOf('market'));
-  add(pr, 'Большой рынок', 5 * lvOf('slavemkt')); add(pr, 'караульни', 2 * lvOf('guard')); add(pr, 'шум каменоломни', -2 * lvOf('quarry'));
+  add(pr, 'биржа найма', 5 * lvOf('slavemkt')); add(pr, 'караульни', 2 * lvOf('guard')); add(pr, 'шум каменоломни', -2 * lvOf('quarry'));
   add(pr, '«Шёлковая лента»', -POLICY[E.pol].pr * lvOf('brothel'));
   const st = S.owned.length ? S.owned.reduce((a, c) => a + c.stress, 0) / S.owned.length : 30;
   add(hp, 'жилища', 4 * lvOf('houses')); add(hp, 'скверы', 4 * lvOf('park')); add(hp, 'купальни', 5 * lvOf('baths')); add(hp, 'таверна', 2 * lvOf('tavern'));
   add(hp, `средний стресс ${Math.round(st)}`, -(st - 40) / 3);
   const tight = S.owned.length - S.capacity + 1; if (tight > 0) add(hp, 'теснота', -4 * tight);
   add(sf, 'караульни', 10 * lvOf('guard')); add(sf, 'стражники', 3 * S.owned.filter(c => c.bld && E.b[c.bld] && E.b[c.bld].t === 'guard').length);
-  add(sf, 'таверна', -3 * lvOf('tavern')); add(sf, '«Шёлковая лента»', -(POLICY[E.pol].safe / 2) * lvOf('brothel')); add(sf, 'Большой рынок', -5 * lvOf('slavemkt')); add(sf, 'рынок', -2 * lvOf('market'));
+  add(sf, 'таверна', -3 * lvOf('tavern')); add(sf, '«Шёлковая лента»', -(POLICY[E.pol].safe / 2) * lvOf('brothel')); add(sf, 'толпа у биржи', -5 * lvOf('slavemkt')); add(sf, 'рынок', -2 * lvOf('market'));
   { const g4 = bList().filter(([, b]) => b.t !== 'slavemkt' && b.lv === 4).length, g5 = bList().filter(([, b]) => b.t !== 'slavemkt' && b.lv >= 5).length;
     add(pr, 'парадные фасады (ур. 4–5)', 2 * g4 + 4 * g5); add(hp, 'имперская роскошь (ур. 5)', 2 * g5); }
   add(sf, 'размер города', -4 * (Object.keys(E.dist).length - 1));
@@ -133,7 +133,7 @@ function bldWorkerOut(c, id, core) {
   if (has(c, 'lazy')) { why.push(['Лень', 0.85]); m *= 0.85; }
   if (has(c, 'clumsy') && (b.t === 'workshop' || b.t === 'quarry')) { why.push(['Неуклюжесть', 0.85]); m *= 0.85; }
   if (b.t === 'brothel') {
-    const rv = 1 + 0.12 * (c.rarity || 0); if (rv > 1) { why.push(['редкость и стать', rv]); m *= rv; }
+    const rv = 1 + 0.12 * (c.rarity || 0); if (rv > 1) { why.push(['редкий талант', rv]); m *= rv; }
     if ((c.gear || []).some(it => it.kind === 'outfit' && it.dur > 0)) { why.push(['наряд', 1.1]); m *= 1.1; }
     const P = POLICY[E.pol]; if (P.m !== 1) { why.push([P.n, P.m]); m *= P.m; }
   }
@@ -205,9 +205,7 @@ function bldAssign(uid, id) {
   if (BT[b.t].noWork) return toast('Здесь работники не нужны.');
   if (bldWorkers(id).length >= bldSlots(id)) return toast('Все места заняты — улучшите здание.');
   if (b.t === 'brothel') {
-    if (c.age < 19) return toast('Только взрослые.');
-    if (c.preg) return toast(`${fn1(c)} сейчас в положении — не время.`);
-    if (c.loyalty < 35) return toast(`${fn1(c)} отказывается: лояльность ниже 35. В «Ленте» работают только те, кто сам согласен.`);
+    if (c.loyalty < 35) return toast(`${fn1(c)} не хочет: лояльность ниже 35. В «Ленту» идут только по желанию.`);
   }
   c.bld = id; toast(`${fn1(c)} теперь работает: ${BT[b.t].short || BT[b.t].n}. Обычных дел у н${g(c, 'его', 'её')} не будет.`); goalBump('assign'); save();
 }
@@ -240,7 +238,7 @@ function buyDistrict(d) {
   });
 }
 function buyMats(k, n) { const c = MAT_P[k] * n; if (S.gold < c) return toast('Не хватает монет.'); S.gold -= c; estOf().mat[k] += n; toast(`Куплено: ${MAT_N[k]} +${n}.`); save(); render(); }
-function setPolicy(p) { estOf().pol = p; toast('Порядки «Шёлковой ленты»: ' + POLICY[p].n); save(); render(); const id = bList('brothel')[0]; if (id) bldModal(id[0]); }
+function setPolicy(p) { estOf().pol = p; toast('Вечера «Шёлковой ленты»: ' + POLICY[p].n); save(); render(); const id = bList('brothel')[0]; if (id) bldModal(id[0]); }
 function setMode(id, m) { bOf(id).mode = m; save(); render(); bldModal(id); }
 function bldSelf(id) {
   const E = estOf(), b = bOf(id); if (E.self === S.day) return toast('Сегодня вы уже поработали сами — завтра снова.');
@@ -257,18 +255,18 @@ function bldSelf(id) {
   showModal('Поработать самому', `<p>${L[b.t]}</p><p class="report-total">+${fmt(v)} мон.${extra}</p><p class="small muted">Раз в день. Доход растёт с уровнем постройки и спросом.</p>`, [{ label: 'Хорошо', cls: 'btn-primary', act: () => { closeModal(); render(); } }]);
   save();
 }
-// ---------- Большой невольничий рынок: выкуп или стройка ----------
+// ---------- Большая биржа найма: выкуп или стройка ----------
 function mktBuy() {
   const E = estOf(); if (mktLv()) return;
-  if (rankIdx() < MKT.rank) return toast(`Гильдия продаст рынок только купцу ранга ${RANKS[MKT.rank].key} и выше.`);
+  if (rankIdx() < MKT.rank) return toast(`Гильдия уступит биржу только купцу ранга ${RANKS[MKT.rank].key} и выше.`);
   if (S.gold < MKT.buy) return toast(`Нужно ${fmt(MKT.buy)} мон.`);
-  confirmModal('Выкупить Большой рынок?', `Гильдия работорговцев уступит вам свой рынок на площади за ${fmt(MKT.buy)} мон. Старый рынок закроется — вместо него будет ваш.`, `Выкупить · ${fmt(MKT.buy)}`, () => {
+  confirmModal('Выкупить биржу найма?', `Гильдия наймитов уступит вам свою биржу на площади за ${fmt(MKT.buy)} мон. Городская контора закроется — вместо неё будет ваша.`, `Выкупить · ${fmt(MKT.buy)}`, () => {
     const prev = mktId(); if (prev) { for (const c of S.owned) if (c.bld === '@' + prev) c.bld = null; delete E.b[prev]; }
     S.gold -= MKT.buy; E.b.slavemkt = { t: 'slavemkt', lv: 1, plot: 'sq', job: null, inv: MKT.buy, stage: 3 };
-    mktOpened('выкуплен у гильдии');
+    mktOpened('выкуплена у гильдии');
   });
 }
-function mktOpened(how) { sfx('coin'); addLog(`Большой невольничий рынок ваш (${how})! Старый рынок теперь работает под вашей вывеской.`); toast('Большой невольничий рынок открыт! Вкладка «Рынок» теперь ваша.'); S.market.push(...Array.from({ length: MKT.lots[1] }, () => makeCharacter())); save(); closeModal(true); render(); }
+function mktOpened(how) { sfx('coin'); addLog(`Большая биржа найма ваша (${how})! Городская контора теперь работает под вашей вывеской.`); toast('Биржа найма открыта! Вкладка «Найм» теперь ваша.'); S.market.push(...Array.from({ length: MKT.lots[1] }, () => makeCharacter())); save(); closeModal(true); render(); }
 function mktStage(buyMissing) {
   const E = estOf(); let b = E.b.slavemkt;
   if (rankIdx() < 1) return toast('Нужен ранг гильдии E.');
@@ -278,45 +276,45 @@ function mktStage(buyMissing) {
   if (r.err) { if (r.nm) return confirmModal('Докупить материалы?', `${r.err} Поставщик продаст недостающее за ${fmt(r.nm.short)} мон.`, `Докупить и строить · ${fmt(St.g + r.nm.short)}`, () => mktStage(true)); return toast(r.err); }
   if (!b) b = E.b.slavemkt = { t: 'slavemkt', lv: 0, plot: 'sq', stage: 0, inv: 0 };
   b.inv += r.paid; b.job = { to: 1, need: St.pts, done: 0, stage: si };
-  addLog(`Большой рынок: начат этап «${St.n}». Работают только ваши люди-строители.`); toast(`Этап «${St.n}» начат. Назначьте строителей!`); save(); render(); bldModal('slavemkt');
+  addLog(`Биржа найма: начат этап «${St.n}». Работают только ваши люди-строители.`); toast(`Этап «${St.n}» начат. Назначьте строителей!`); save(); render(); bldModal('slavemkt');
 }
 function sqModal() {
   const E = estOf(), b = E.b.slavemkt, rk = rankIdx();
   const st = MKT.stages.map((s, i) => `<div class="mk-stage ${b && b.stage > i ? 'done' : b && b.stage === i && b.job ? 'cur' : ''}"><b>${i + 1}. ${s.n}</b> — ${fmt(s.g)} мон., ${matsTxt({ stone: s.stone, tools: s.tools })}, работа ${s.pts} ед.${b && b.stage === i && b.job ? ` · сделано ${Math.round(b.job.done)}/${b.job.need}` : ''}</div>`).join('');
-  showModal('Центральная площадь', `<p class="small">Здесь может стоять <b>Большой невольничий рынок</b> — ваш собственный. Больше лотов и редкостей, скидка на покупку, меньше потери при продаже, загон для перепродажи и дни распродаж. Он заменит старый рынок.</p>
+  showModal('Центральная площадь', `<p class="small">Здесь может стоять <b>Большая биржа найма</b> — ваша собственная. Больше соискателей и редких мастеров, ниже подъёмные, выше комиссия за трудоустройство, кадровый резерв и дни найма. Она заменит городскую контору.</p>
     <div class="panel-title small">Путь 1 — выкупить сразу</div><div class="small">${fmt(MKT.buy)} мон. ${rk < MKT.rank ? `· нужен ранг ${RANKS[MKT.rank].key}` : ''}</div>
     <div class="panel-title small" style="margin-top:8px">Путь 2 — построить силами своих людей</div>${st}
     <div class="small muted">Всего ≈ 12 000 мон. + камень и инструменты (с каменоломни и мастерской или у поставщика). Работают только строители из ваших людей: Сила, Выносливость и Мастерство ускоряют. Склад: камень ${E.mat.stone}, инструменты ${E.mat.tools}.</div>`, [
     ...(!b || !b.job ? [{ label: `Строить этап ${(b ? b.stage : 0) + 1}`, cls: 'btn-primary', act: () => mktStage() }] : [{ label: 'Стройка', cls: 'btn-primary', act: () => bldModal('slavemkt') }]),
     { label: `Выкупить · ${fmt(MKT.buy)}`, act: () => mktBuy() }, { label: 'Закрыть', act: 'close' }]);
 }
-// ---------- загон и дни распродаж ----------
+// ---------- кадровый резерв и дни найма (биржа устраивает людей к другим нанимателям за комиссию) ----------
 function stableCap() { return MKT.stable[mktLv()] || 0; }
 function stableBuyersLeft() { const E = estOf(), lv = mktLv(); if (E.sold.d !== S.day) E.sold = { d: S.day, n: 0 }; const extra = mktId() ? bldWorkers(mktId()).length : 0; return (MKT.buyers[lv] + extra) * (E.saleDay === S.day ? 3 : 1) - E.sold.n; }
 function stableBuy(uid) {
   const E = estOf(), c = S.market.find(x => x.uid === uid); if (!c || !mktLv()) return;
-  if (E.stable.length >= stableCap()) return toast(`Загон полон (${stableCap()}).`);
+  if (E.stable.length >= stableCap()) return toast(`Резерв полон (${stableCap()}).`);
   const cost = price(c); if (S.gold < cost) return toast(`Нужно ${fmt(cost)} мон.`);
   S.gold -= cost; S.market = S.market.filter(x => x !== c); c.stockDay = S.day; c.boughtFor = cost; E.stable.push(c); supplyShock(c.race, 0.02);
-  addLog(`В загон для перепродажи: ${c.name} за ${fmt(cost)} мон.`); toast(`${fn1(c)} — в загоне. Продать можно со следующего дня.`); sfx('buy'); save(); go('market');
+  addLog(`В кадровый резерв: ${c.name}, подъёмные ${fmt(cost)} мон.`); toast(`${fn1(c)} — в резерве биржи. Подыскать место можно со следующего дня.`); sfx('buy'); save(); go('market');
 }
 function stablePrice(c) { return Math.round(sellPrice(c) * (estOf().saleDay === S.day ? 1.15 : 1)); }
 function stableSell(uid) {
   const E = estOf(), c = E.stable.find(x => x.uid === uid); if (!c) return;
-  if (c.stockDay >= S.day) return toast('Покупатели придут завтра — дайте человеку освоиться.');
-  if (stableBuyersLeft() <= 0) return toast('Сегодня покупателей больше нет. Завтра будут — или устройте день распродажи.');
+  if (c.stockDay >= S.day) return toast('Наниматели придут завтра — дайте человеку подготовиться.');
+  if (stableBuyersLeft() <= 0) return toast('Сегодня нанимателей больше нет. Завтра будут — или объявите день найма.');
   const p = stablePrice(c); S.gold += p; S.totalEarned += p; E.sold.n++; E.stable = E.stable.filter(x => x !== c); supplyShock(c.race, -0.03);
-  addLog(`Из загона продан${g(c, '', 'а')} ${c.name} за ${fmt(p)} мон. (куплено за ${fmt(c.boughtFor || 0)}).`); toast(`Продано: +${fmt(p)} мон.`); goalBump('stable'); sfx('sell'); save(); render();
+  addLog(`${c.name} устроен${g(c, '', 'а')} на хорошее место: комиссия биржи ${fmt(p)} мон. (подъёмные были ${fmt(c.boughtFor || 0)}).`); toast(`Трудоустроен${g(c, '', 'а')}: +${fmt(p)} мон.`); goalBump('stable'); sfx('sell'); save(); render();
 }
 function stableTake(uid) {
   const E = estOf(), c = E.stable.find(x => x.uid === uid); if (!c) return;
-  if (S.owned.length >= S.capacity) return toast('В поместье нет мест.');
-  E.stable = E.stable.filter(x => x !== c); c.status = 'home'; c.task = 'rest'; delete c.stockDay; S.owned.push(c); toast(`${fn1(c)} теперь живёт в поместье.`); save(); render();
+  if (S.owned.length >= S.capacity) return toast('В хозяйстве нет мест.');
+  E.stable = E.stable.filter(x => x !== c); c.status = 'home'; c.task = 'rest'; delete c.stockDay; S.owned.push(c); if (typeof staffHire === 'function') staffHire(c, 0); toast(`${fn1(c)} теперь работает в вашем хозяйстве.`); save(); render();
 }
 function saleSchedule() {
-  const E = estOf(); if (S.day - E.saleLast < 7) return toast(`Следующую распродажу можно объявить с ${E.saleLast + 7}-го дня.`);
+  const E = estOf(); if (S.day - E.saleLast < 7) return toast(`Следующий день найма можно объявить с ${E.saleLast + 7}-го дня.`);
   if (S.gold < 300) return toast('Глашатаи стоят 300 мон.');
-  S.gold -= 300; E.saleDay = S.day + 2; E.saleLast = S.day; addLog(`Объявлен день большой распродажи — день ${E.saleDay}.`); toast(`Глашатаи разнесли весть: распродажа в день ${E.saleDay}!`); save(); render();
+  S.gold -= 300; E.saleDay = S.day + 2; E.saleLast = S.day; addLog(`Объявлен большой день найма — день ${E.saleDay}.`); toast(`Глашатаи разнесли весть: день найма — ${E.saleDay}!`); save(); render();
 }
 
 // ---------- рисунки: тёплый «рисованный» стиль, растут с уровнем ----------
@@ -378,7 +376,7 @@ function bldNode(id, b) {
   return `<g class="bld" data-cid="${id}" transform="translate(${P.x} ${P.y}) scale(${sc})">${bldArt(b.t, b.lv, !!b.job)}${scaf}${prog}${closed}<rect x="-32" y="-36" width="64" height="58" fill="transparent"/></g>`;
 }
 function bldTag(id, b) {
-  const P = PLOTS[b.plot], nm = (BT[b.t].short || BT[b.t].n).replace('Дом утех ', ''), txt = `${nm}${b.lv ? ' · ' + b.lv : ''}${b.job ? ' ⚒' : ''}`, w = Math.max(44, txt.length * 5.1 + 10);
+  const P = PLOTS[b.plot], nm = (BT[b.t].short || BT[b.t].n).replace('Чайный дом ', ''), txt = `${nm}${b.lv ? ' · ' + b.lv : ''}${b.job ? ' ⚒' : ''}`, w = Math.max(44, txt.length * 5.1 + 10);
   const y = P.y + (b.t === 'slavemkt' ? 30 : 22);
   return `<g class="bld-lab" data-cid="${id}"><rect x="${P.x - w / 2}" y="${y}" width="${w}" height="13" rx="6.5" fill="#fff8e6" opacity=".92" stroke="#8a6438" stroke-width=".8"/><text x="${P.x}" y="${y + 9.5}" text-anchor="middle" font-size="8.4" fill="#3b2616">${esc(txt)}</text></g>`;
 }
@@ -401,7 +399,7 @@ function mapSvg() {
   }
   for (const [p, P] of Object.entries(PLOTS)) {
     if (used.has(p) || !E.dist[P.d]) continue;
-    if (P.big) s += `<g class="plot" data-csq="1"><ellipse cx="180" cy="300" rx="78" ry="34" fill="#000" fill-opacity="0"/><text x="180" y="296" text-anchor="middle" font-size="9.5" fill="#6b4a2a" font-weight="700">Центральная площадь</text><text x="180" y="310" text-anchor="middle" font-size="8.5" fill="#6b4a2a">${mktLv() ? '' : 'место для Большого рынка'}</text></g>`;
+    if (P.big) s += `<g class="plot" data-csq="1"><ellipse cx="180" cy="300" rx="78" ry="34" fill="#000" fill-opacity="0"/><text x="180" y="296" text-anchor="middle" font-size="9.5" fill="#6b4a2a" font-weight="700">Центральная площадь</text><text x="180" y="310" text-anchor="middle" font-size="8.5" fill="#6b4a2a">${mktLv() ? '' : 'место для биржи найма'}</text></g>`;
     else s += `<g class="plot" data-cplot="${p}" transform="translate(${P.x} ${P.y})"><ellipse rx="24" ry="13" fill="#fff8e6" opacity=".45" stroke="#8a6438" stroke-dasharray="4 3"/><text y="4" text-anchor="middle" font-size="13" fill="#8a6438">+</text></g>`;
   }
   const items = Object.entries(E.b).sort((a, b) => PLOTS[a[1].plot].y - PLOTS[b[1].plot].y);
@@ -416,7 +414,7 @@ function evBanner() { const E = estOf(); if (!E.ev) return ''; const D = CEV[E.e
 function viewEstate() {
   const E = estOf(), st = cityStats(), core = st;
   const blds = Object.entries(E.b), free = homeChars().filter(c => !c.bld).length, jobs = blds.filter(([, b]) => b.job);
-  const ent = blds.filter(([, b]) => b.lv).map(([id, b]) => { const P = bldPreview(id, core); return `<button class="est-row" data-cid="${id}"><b>${esc(BT[b.t].short || BT[b.t].n)} · ${b.lv}</b><span>${BT[b.t].noWork ? 'без работников' : `${bldWorkers(id).length}/${bldSlots(id)} раб.`}${b.job ? ' · ⚒ ' + Math.round(100 * b.job.done / b.job.need) + '%' : ''}</span><span class="${P ? 'pos' : 'muted'}">${b.mode === 'store' && BT[b.t].store ? `+${matFrom(b.t, P)} ${MAT_N[BT[b.t].store]}` : P ? '+' + fmt(P) : '—'} <span class="muted">/ −${bldUpkeepB(b)}</span></span></button>`; }).join('');
+  const ent = blds.filter(([, b]) => b.lv).map(([id, b]) => { const P = bldPreview(id, core); return `<button class="est-row" data-cid="${id}"><b>${esc(BT[b.t].short || BT[b.t].n)} · ${b.lv}</b><span>${BT[b.t].noWork ? 'без работников' : `${bldWorkers(id).length}/${bldSlots(id)} чел.`}${b.job ? ' · ⚒ ' + Math.round(100 * b.job.done / b.job.need) + '%' : ''}</span><span class="${P ? 'pos' : 'muted'}">${b.mode === 'store' && BT[b.t].store ? `+${matFrom(b.t, P)} ${MAT_N[BT[b.t].store]}` : P ? '+' + fmt(P) : '—'} <span class="muted">/ −${bldUpkeepB(b)}</span></span></button>`; }).join('');
   const bj = jobs.map(([id, b]) => { const bs = bldBuilders(id), per = 12 * (b.t === 'slavemkt' ? 0 : 1) + bs.reduce((a, c) => a + builderPts(c), 0), left = Math.max(0, b.job.need - b.job.done); return `<button class="est-row" data-cid="${id}"><b>⚒ ${esc(BT[b.t].short || BT[b.t].n)} → ${b.job.stage != null ? 'этап ' + (b.job.stage + 1) : 'ур. ' + b.job.to}</b><span>строителей: ${bs.length}</span><span>${per ? `≈ ${Math.ceil(left / per)} дн.` : 'стоит — нужны строители'}</span></button>`; }).join('');
   return `<div class="screen-head"><h1>Владения</h1><div class="sub">Ваш городок у Медового Лога: районы, стройки, жители. Нажмите на участок или здание.</div></div>
   ${evBanner()}
@@ -430,10 +428,10 @@ function viewEstate() {
     </div>
     <button class="btn small" data-cwhy="net">Почему так?</button>
     <div class="ctoggles"><label><input type="checkbox" data-cauto="auto" ${E.auto ? 'checked' : ''}> Авто-управление (ставить работников и строителей, давать отдых)</label>
-    ${bList('brothel').length ? `<label><input type="checkbox" data-cauto="autoB" ${E.autoB ? 'checked' : ''}> включая «Шёлковую ленту» (только согласных, лояльность 35+)</label>` : ''}</div>
+    ${bList('brothel').length ? `<label><input type="checkbox" data-cauto="autoB" ${E.autoB ? 'checked' : ''}> включая «Шёлковую ленту» (только желающих, лояльность 35+)</label>` : ''}</div>
     ${bj ? `<div class="panel-title small">Стройки</div><div class="est-list">${bj}</div>` : ''}
     <div class="panel-title small">Здания</div><div class="est-list">${ent || '<div class="small muted">Пока ничего не построено — нажмите «+» на карте.</div>'}</div>
-    <div class="btn-row"><button class="btn btn-primary small" data-cbuild="1">Построить…</button><button class="btn small" data-cmats="1">Материалы</button>${!mktLv() ? '<button class="btn small" data-csq="1">Большой рынок</button>' : ''}</div>
+    <div class="btn-row"><button class="btn btn-primary small" data-cbuild="1">Построить…</button><button class="btn small" data-cmats="1">Материалы</button>${!mktLv() ? '<button class="btn small" data-csq="1">Биржа найма</button>' : ''}</div>
     ${E.last ? `<div class="small muted">Вчера: город +${fmt(E.last.inc)}, содержание −${fmt(E.last.upk)}${E.last.tax ? `, сбор −${fmt(E.last.tax)}` : ''}.</div>` : ''}
     <div class="small muted">Работники и строители весь день заняты там — обычных дел у них нет. Спрос меняется каждый день.</div></div>`;
 }
@@ -441,8 +439,8 @@ function whyModal(k) {
   const st = cityStats();
   if (k === 'net') {
     const E = estOf(), rows = bList().map(([id, b]) => { const v = bldPreview(id, st), store = b.mode === 'store' && BT[b.t].store; return `<tr><td>${esc(BT[b.t].short || BT[b.t].n)} ${b.lv || '⚒'}</td><td class="pos">${store ? `+${matFrom(b.t, v)} ${MAT_N[BT[b.t].store]}` : v ? '+' + v : '—'}</td><td class="neg">−${bldUpkeepB(b)}</td></tr>`; }).join('');
-    return showModal('Почему так: деньги города', `<table class="why-t"><tr><th>Здание</th><th>Доход</th><th>Содерж.</th></tr>${rows}${E.stable.length ? `<tr><td>Загон (${E.stable.length})</td><td></td><td class="neg">−${8 * E.stable.length}</td></tr>` : ''}<tr><td><b>Итого</b></td><td class="pos"><b>+${fmt(st.inc)}</b></td><td class="neg"><b>−${fmt(st.upk)}</b></td></tr></table>
-      <p class="small">Доход работника = база здания × навыки × уровень × черты × соседство × счастье (${st.happy}) × репутация района (${st.prest}) × спрос. Подробно — в карточке здания.</p><p class="small muted">Раз в неделю гильдия берёт сбор: 4% с запаса сверх 1500 + 12 за уровень построек${bList('brothel').length ? ' + 40 за уровень «Ленты»' : ''}${mktLv() ? ' + 60 за уровень Большого рынка' : ''}.</p>`);
+    return showModal('Почему так: деньги города', `<table class="why-t"><tr><th>Здание</th><th>Доход</th><th>Содерж.</th></tr>${rows}${E.stable.length ? `<tr><td>Резерв биржи (${E.stable.length})</td><td></td><td class="neg">−${8 * E.stable.length}</td></tr>` : ''}<tr><td><b>Итого</b></td><td class="pos"><b>+${fmt(st.inc)}</b></td><td class="neg"><b>−${fmt(st.upk)}</b></td></tr></table>
+      <p class="small">Доход работника = база здания × навыки × уровень × черты × соседство × счастье (${st.happy}) × репутация района (${st.prest}) × спрос. Подробно — в карточке здания.</p><p class="small muted">Раз в неделю гильдия берёт сбор: 4% с запаса сверх 1500 + 12 за уровень построек${bList('brothel').length ? ' + 40 за уровень «Ленты»' : ''}${mktLv() ? ' + 60 за уровень биржи найма' : ''}.</p>`);
   }
   const fx = { prest: `Влияет на доход всех зданий: ×${(0.9 + 0.2 * st.prest / 100).toFixed(2)}. От 70 — раз в неделю +1 к репутации гильдии, до 20 — −1.`, happy: `Влияет на выработку: ×${(0.85 + 0.3 * st.happy / 100).toFixed(2)}, и каждый день меняет стресс жителей на ${-Math.round((st.happy - 50) / 10)}.`, safe: `Чем ниже, тем чаще пожары и кражи. Сейчас риск: ${st.safe >= 70 ? 'низкий' : st.safe >= 45 ? 'средний' : 'высокий'}.` }[k];
   showModal('Почему так: ' + STAT_N[k], `<div class="big-num">${st[k]}</div><table class="why-t">${st.why[k].map(([n, v]) => `<tr><td>${esc(n)}</td><td class="${v >= 0 ? 'pos' : 'neg'}">${v >= 0 ? '+' : ''}${v}</td></tr>`).join('')}</table><p class="small">${fx}</p>`);
@@ -458,7 +456,7 @@ function plotModal(p) {
 function buildMenu() { const fp = freePlots(); if (!fp.length) return showModal('Нет свободных участков', '<p>Купите новый район на карте (затуманенные области) или снесите что-нибудь.</p>'); plotModal(fp[0]); }
 function matsModal() {
   const E = estOf();
-  showModal('Материалы', `<p class="small">Камень и инструменты нужны для улучшений с 3-го уровня и для Большого рынка. Каменоломню и мастерскую можно переключить с продажи на склад.</p><div class="csum-grid"><div><span>Камень</span><b>${E.mat.stone}</b></div><div><span>Инструменты</span><b>${E.mat.tools}</b></div></div><p class="small">Поставщик: камень ${MAT_P.stone} мон., инструменты ${MAT_P.tools} мон. за единицу.</p>`,
+  showModal('Материалы', `<p class="small">Камень и инструменты нужны для улучшений с 3-го уровня и для биржи найма. Каменоломню и мастерскую можно переключить с продажи на склад.</p><div class="csum-grid"><div><span>Камень</span><b>${E.mat.stone}</b></div><div><span>Инструменты</span><b>${E.mat.tools}</b></div></div><p class="small">Поставщик: камень ${MAT_P.stone} мон., инструменты ${MAT_P.tools} мон. за единицу.</p>`,
     [{ label: `Камень +10 · ${MAT_P.stone * 10}`, act: () => { buyMats('stone', 10); matsModal(); } }, { label: `Инстр. +10 · ${MAT_P.tools * 10}`, act: () => { buyMats('tools', 10); matsModal(); } }, { label: 'Закрыть', act: 'close' }]);
 }
 function bldModal(id) {
@@ -483,7 +481,7 @@ function bldModal(id) {
   if (b.t === 'farm') h += `<div class="small">Еда в поместье дешевле на ${Math.min(45, 6 * lvSum('farm'))}% (все огороды вместе).</div>`;
   if (B.store) h += `<div class="small">Режим: <button class="chip ${b.mode !== 'store' ? 'on' : ''}" data-cmode="sell" data-id="${id}">продавать</button> <button class="chip ${b.mode === 'store' ? 'on' : ''}" data-cmode="store" data-id="${id}">на склад (${MAT_N[B.store]})</button></div>`;
   if (b.t === 'brothel') h += brothelPanel(id);
-  if (b.t === 'slavemkt' && lv) h += `<div class="small">Уровень ${lv}: +${MKT.lots[lv]} лотов, скидка ${Math.round(MKT.disc[lv] * 100)}%, продажа +${Math.round(MKT.sell[lv] * 100)}%, загон ${stableCap()}, покупателей в день ${MKT.buyers[lv]} + работники, редкости +${Math.round(MKT.rare[lv] * 100)}%${lv >= 2 ? ', бесплатное обновление раз в день' : ''}. Комиссия аукциона ${Math.round(aucFee() * 100)}%.</div>`;
+  if (b.t === 'slavemkt' && lv) h += `<div class="small">Уровень ${lv}: +${MKT.lots[lv]} соискателей, подъёмные −${Math.round(MKT.disc[lv] * 100)}%, комиссия +${Math.round(MKT.sell[lv] * 100)}%, резерв ${stableCap()}, нанимателей в день ${MKT.buyers[lv]} + работники биржи, редкие мастера +${Math.round(MKT.rare[lv] * 100)}%${lv >= 2 ? ', бесплатное обновление раз в день' : ''}. Комиссия аукциона ${Math.round(aucFee() * 100)}%.</div>`;
   if (lv && !B.noWork) {
     h += `<div class="panel-title small" style="margin-top:8px">Работники ${ws.length}/${slots}</div>
     ${ws.map(c => { const o = bldWorkerOut(c, id, core); return `<div class="bw-row"><b>${esc(fn1(c))}</b> +${o.v}${b.t === 'brothel' ? ` <span class="small muted">стресс ${Math.round(c.stress)} · лоял. ${Math.round(c.loyalty)}</span>` : ''} <button class="btn small" data-bldun="${c.uid}">Снять</button><div class="why small muted">Почему так: ${B.base} × ${o.why.map(w => `${esc(w[0])} ×${w[1].toFixed(2)}`).join(' · ')}</div></div>`; }).join('') || '<div class="small muted">Пока никого.</div>'}
@@ -493,7 +491,7 @@ function bldModal(id) {
   if (lv && !b.job && lv < maxLv) { const nx = lv + 1, gc = b.t === 'slavemkt' ? MKT.up[nx].g : bldCost(b.t, nx), m = bldMats(b.t, nx); btns.push({ label: `Улучшить → ${nx} · ${fmt(gc)}${matsTxt(m) ? ' + ' + matsTxt(m) : ''}`, cls: 'btn-primary', act: () => bldUpgrade(id) }); }
   if (b.t === 'slavemkt' && !lv && !b.job) btns.push({ label: 'Следующий этап', cls: 'btn-primary', act: () => sqModal() });
   if (lv && b.t !== 'houses' && b.t !== 'park') btns.push({ label: E.self === S.day ? 'Сами — уже сегодня' : 'Поработать самому', act: () => bldSelf(id) });
-  if (b.t === 'slavemkt' && lv) btns.push({ label: 'К рынку', act: () => { closeModal(); go('market'); } });
+  if (b.t === 'slavemkt' && lv) btns.push({ label: 'К бирже', act: () => { closeModal(); go('market'); } });
   if (b.t !== 'slavemkt') { btns.push({ label: `Перенести · ${fmt(bldMoveCost(id))}`, act: () => moveModal(id) }); btns.push({ label: 'Снести', cls: 'btn-danger', act: () => bldDemolish(id) }); }
   btns.push({ label: 'Закрыть', act: 'close' });
   showModal(esc(B.n) + (lv ? ` · уровень ${lv}` : ' · стройка'), h, btns);
@@ -505,9 +503,8 @@ function moveModal(id) {
 }
 function brothelPanel(id) {
   const E = estOf(), bath = lvSum('baths');
-  return `<div class="panel-title small" style="margin-top:8px">Порядки дома</div>${Object.entries(POLICY).map(([k, P]) => `<button class="bmenu ${E.pol === k ? 'on' : ''}" data-cpol="${k}"><b>${P.n}${E.pol === k ? ' ✓' : ''}</b><small>${P.d}</small></button>`).join('')}
-    <div class="small">Здоровье: ${bath ? `купальни ур. ${bath} — лекарь проверяет всех, риск хвори мал` : '<b>нет купален</b> — риск хвори выше, стресс снимается хуже'}. Гильдия: сбор +40 за уровень в неделю. Работают только взрослые (19+), согласные (лояльность 35+) и не в положении; при лояльности ниже 25 человек уходит из «Ленты».</div>
-    <div class="small muted">Что происходит за дверями — остаётся за дверями. Здесь видно только деньги, настроение и слухи.</div>`;
+  return `<div class="panel-title small" style="margin-top:8px">Какие вечера проводить</div>${Object.entries(POLICY).map(([k, P]) => `<button class="bmenu ${E.pol === k ? 'on' : ''}" data-cpol="${k}"><b>${P.n}${E.pol === k ? ' ✓' : ''}</b><small>${P.d}</small></button>`).join('')}
+    <div class="small">Здоровье: ${bath ? `купальни ур. ${bath} — лекарь проверяет всех, риск хвори мал` : '<b>нет купален</b> — риск хвори выше, стресс снимается хуже'}. Гильдия: сбор +40 за уровень в неделю. Работают только те, кто хочет (лояльность 35+); при лояльности ниже 25 человек просит перевести его на другое дело.</div>`;
 }
 
 // ---------- события города (с выбором) ----------
@@ -518,7 +515,7 @@ const CEV = {
       ['Тушить своими силами', e => { homeChars().slice(0, 4).forEach(c => { c.health = clamp(c.health - 15); c.stress = clamp(c.stress + 8); }); return 'Ваши люди отстояли здание, но наглотались дыма: здоровье −15.' + closeB(e.id); }],
       ['Пусть догорает, лишь бы не дальше', e => { const b = bOf(e.id); if (!b) return ''; if (lvSum('guard') >= 2) return 'Караульня успела сбить пламя — здание закрыто на день.' + closeB(e.id); if (b.lv > 1) { b.lv--; syncCap(); return `Огонь съел верхний этаж: «${bldLabel(e.id)}» теперь уровня ${b.lv}.`; } return 'Здание обгорело и закрыто на день.' + closeB(e.id); }]] },
   insp: { w: () => 6 + (estOf().pol === 'lavish' ? 6 : 0), need: () => pickBld(), t: e => `Проверка гильдии в «${bldLabel(e.id)}»`, d: e => `Строгий писарь с печатью желает осмотреть «${bldLabel(e.id)}». Репутация района: ${cityCore().prest}.`, def: 0,
-    o: [['Показать всё честно', e => { const p = cityCore().prest + (bOf(e.id) && bOf(e.id).t === 'brothel' && estOf().pol === 'lavish' ? -25 : 0); if (R() * 100 < p + 15) { S.rep += 1; return 'Писарь доволен: «Образцово!» Репутация +1.'; } S.gold -= 150; return 'Нашлись мелкие нарушения: штраф 150 мон.'; }],
+    o: [['Показать всё честно', e => { const p = cityCore().prest + (bOf(e.id) && bOf(e.id).t === 'brothel' && estOf().pol === 'lavish' ? -15 : 0); if (R() * 100 < p + 15) { S.rep += 1; return 'Писарь доволен: «Образцово!» Репутация +1.'; } S.gold -= 150; return 'Нашлись мелкие нарушения: штраф 150 мон.'; }],
       ['Сунуть «на чернила» · 200', e => { S.gold -= 200; if (R() < 0.2) { S.rep = Math.max(0, S.rep - 1); return 'Взятку взяли, но слух пошёл: репутация −1.'; } return 'Писарь подмигнул и ушёл обедать.'; }],
       ['Закрыть на день «на уборку»', e => 'Проверять было нечего: здание закрыто на день.' + closeB(e.id)]] },
   fest: { w: () => 6, need: () => 'x', t: () => 'Горожане хотят праздник', d: () => 'Цеха предлагают устроить ярмарку с музыкой на вашей площади. Нужны деньги на флажки и бочки.', def: 1,
@@ -527,10 +524,10 @@ const CEV = {
   theft: { w: s => 7 * (1.5 - s.safe / 100), need: () => pickBld(b => ['market', 'tavern', 'workshop', 'brothel', 'slavemkt'].includes(b.t)), t: e => `Кража в «${bldLabel(e.id)}»`, d: e => { e.loss = e.loss || Math.round(80 + R() * 160 + 40 * (bOf(e.id) || { lv: 1 }).lv); return `Из кассы пропало ${e.loss} мон. Есть подозрение на шайку с пристани.`; }, def: 1,
     o: [['Устроить облаву', e => { const ch = 0.3 + 0.2 * lvSum('guard') + cityCore().safe / 300; if (R() < ch) { S.gold += Math.round(e.loss * 0.5); return 'Шайку взяли! Вернули половину и ещё немного сверху.'; } S.gold -= e.loss; return 'Воры ушли переулками. Потеря ' + e.loss + ' мон.'; }],
       ['Списать убыток', e => { S.gold -= e.loss; return `Минус ${e.loss} мон. Пожалуй, пора подумать о караульне.`; }]] },
-  noble: { w: () => bList('brothel').some(([, b]) => b.lv) ? 7 : 0, need: () => pickBld(b => b.t === 'brothel'), t: () => 'Знатный гость в «Шёлковой ленте»', d: () => 'Под капюшоном — сам барон с Верхнего тракта. Просит, чтобы о его визите никто не узнал.', def: 0,
-    o: [['Хранить тайну', () => { const v = 250 + 80 * lvSum('brothel'); S.gold += v; return `Барон оставил щедрые чаевые: +${v} мон. Дверь закрылась, свечи погасли.`; }],
-      ['Похвастаться в городе', () => { S.rep += 2; estOf().mods.push({ k: 'prest', n: 'громкий слух', v: -8, until: S.day + 4 }); return 'Весь Лог судачит: репутация +2, но приличные соседи морщатся (репутация района −8 на 5 дней).'; }]] },
-  rest: { w: () => bList('brothel').some(([id]) => bldWorkers(id).length) ? 6 + (estOf().pol === 'lavish' ? 5 : 0) : 0, need: () => pickBld(b => b.t === 'brothel'), t: () => 'Работники «Ленты» просят выходной', d: () => 'Говорят, что устали улыбаться, и просят день отдыха и пикник у реки.', def: 1,
+  noble: { w: () => bList('brothel').some(([, b]) => b.lv) ? 7 : 0, need: () => pickBld(b => b.t === 'brothel'), t: () => 'Знатный гость в «Шёлковой ленте»', d: () => 'В чайный дом заглянул сам барон с Верхнего тракта — инкогнито, отдохнуть от придворной суеты за партией в шашки.', def: 0,
+    o: [['Хранить тайну', () => { const v = 250 + 80 * lvSum('brothel'); S.gold += v; return `Барон отдохнул душой и оставил щедрые чаевые: +${v} мон.`; }],
+      ['Похвастаться в городе', () => { S.rep += 2; estOf().mods.push({ k: 'prest', n: 'громкий слух', v: -8, until: S.day + 4 }); return 'Весь Лог судачит: репутация +2, но к «Ленте» выстроилась шумная очередь зевак (репутация района −8 на 5 дней).'; }]] },
+  rest: { w: () => bList('brothel').some(([id]) => bldWorkers(id).length) ? 6 + (estOf().pol === 'lavish' ? 5 : 0) : 0, need: () => pickBld(b => b.t === 'brothel'), t: () => 'Работники «Ленты» просят выходной', d: () => 'Говорят, что устали от поздних смен, и просят день отдыха и пикник у реки.', def: 1,
     o: [['Дать выходной', e => { for (const c of bldWorkers(e.id)) { c.stress = clamp(c.stress - 20); c.loyalty = clamp(c.loyalty + 4); } return 'Пикник, венки, песни. Стресс −20, лояльность +4. Дом закрыт на день.' + closeB(e.id); }],
       ['Отказать', e => { for (const c of bldWorkers(e.id)) { c.stress = clamp(c.stress + 6); c.loyalty = clamp(c.loyalty - 5); } return 'Работают, но без огонька: лояльность −5, стресс +6.'; }]] },
   quarry: { w: () => lvSum('quarry') ? 4 : 0, need: () => pickBld(b => b.t === 'quarry'), t: () => 'Обвал на каменоломне', d: () => 'Часть забоя осыпалась. Можно укрепить стены или работать как есть.', def: 1,
@@ -553,16 +550,16 @@ function evResolve(i, auto) {
 }
 function evModal() { const E = estOf(), e = E.ev; if (!e) return; const D = CEV[e.k]; showModal(esc(D.t(e)), `<p>${esc(D.d(e))}</p><p class="small muted">Если не решить до конца дня — «${esc(D.o[D.def][0])}».</p>`, [...D.o.map((o, i) => ({ label: esc(o[0]), cls: i === 0 ? 'btn-primary' : '', act: () => { closeModal(); evResolve(i); } })), { label: 'Позже', act: 'close' }]); }
 
-// ---------- слухи «Ленты» (без подробностей, всё за кадром) ----------
+// ---------- городские байки о «Ленте» ----------
 const RUMORS = [
   '{n} так сыграл{a} на лютне, что купец забыл, зачем пришёл, — и оставил вдвое больше.',
-  'Говорят, {n} умеет одним взглядом заставить гостя заказать лучшее вино. Дальше — занавес.',
-  'Гость принёс {n} букет полевых ромашек и долго читал стихи. Стихи были ужасны, чаевые — прекрасны.',
-  'Вдова мельника уверяет, что в «Ленте» лучший чай в Логе. Все кивают с серьёзными лицами.',
-  '{n} весь вечер учил{a} капитана стражи танцевать. Капитан наступил на всё, что можно. Свечи погасли.',
-  'Кто-то оставил у дверей «Ленты» корзину пирогов и записку «Спасибо за вечер». Подписи нет.',
-  'Бард сложил о {n} балладу. Приличную. Почти.',
-  'Молодой писарь краснел, заикался и ушёл счастливым. Подробности остались за бархатной шторой.',
+  'Говорят, {n} умеет так рассказать о чае, что гость заказывает самый дорогой сорт — и не жалеет.',
+  'Гость весь вечер читал {n} свои стихи. Стихи были ужасны, чаевые — прекрасны.',
+  'Вдова мельника уверяет, что в «Ленте» лучший чай в Логе. И ведь правда.',
+  '{n} весь вечер учил{a} капитана стражи танцевать. Капитан наступил на всё, что можно, но ушёл довольным.',
+  'Кто-то оставил у дверей «Ленты» корзину пирогов и записку «Спасибо за чудесный вечер». Подписи нет.',
+  'Бард сложил балладу о пирогах {n}. Весь Лог её распевает.',
+  'Молодой писарь проиграл {n} в шашки пять партий подряд и ушёл счастливым: наконец-то нашёлся достойный соперник.',
 ];
 function rumor(c) { return pick(RUMORS).replace(/\{n\}/g, fn1(c)).replace(/\{a\}/g, g(c, '', 'а')); }
 
@@ -613,7 +610,7 @@ function estDayStart() {
       }
       b.job.done += pts;
       if (b.job.done >= b.job.need) {
-        if (b.job.stage != null) { b.stage = b.job.stage + 1; b.job = null; if (b.stage >= 3) { b.lv = 1; for (const c of S.owned) if (c.bld === '@' + id) c.bld = null; lines.push('🎉 Большой невольничий рынок достроен вашими людьми! Старый рынок теперь ваш.'); addLog('Большой невольничий рынок построен.'); } else lines.push(`Большой рынок: этап «${MKT.stages[b.stage - 1].n}» готов. Можно начинать следующий.`); }
+        if (b.job.stage != null) { b.stage = b.job.stage + 1; b.job = null; if (b.stage >= 3) { b.lv = 1; for (const c of S.owned) if (c.bld === '@' + id) c.bld = null; lines.push('🎉 Большая биржа найма достроена вашими людьми! Городская контора теперь ваша.'); addLog('Большая биржа найма построена.'); } else lines.push(`Биржа найма: этап «${MKT.stages[b.stage - 1].n}» готов. Можно начинать следующий.`); }
         else { b.lv = b.job.to; b.job = null; lines.push(`⚒ Готово: «${nm}» — уровень ${b.lv}.`); addLog(`Достроено: ${B.n}, уровень ${b.lv}.`); syncCap(); }
         for (const c of S.owned) if (c.bld === '@' + id && !c._bp) c.bld = null;
       } else if (pts) lines.push(`⚒ «${nm}»: +${Math.round(pts)} ед. (${Math.round(b.job.done)}/${b.job.need}).`);
@@ -647,12 +644,12 @@ function estDayStart() {
     if (b.t === 'brothel' && E.pol === 'lavish' && R() < 0.12) { S.rep = Math.max(0, S.rep - 1); lines.push('Гильдия недовольна шумом «Ленты»: репутация −1.'); }
   }
   for (const k in mat) if (mat[k]) { E.mat[k] += mat[k]; lines.push(`На склад: ${MAT_N[k]} +${mat[k]}.`); }
-  if (E.stable.length) { upk += 8 * E.stable.length; lines.push(`Загон: ${E.stable.length} чел., корм −${8 * E.stable.length}.`); }
+  if (E.stable.length) { upk += 8 * E.stable.length; lines.push(`Резерв биржи: ${E.stable.length} чел., содержание −${8 * E.stable.length}.`); }
   let tax = 0;
   if (S.day % 7 === 0) {
     const lvls = bList().reduce((a, [, b]) => a + b.lv, 0), guild = 40 * lvSum('brothel') + 60 * mktLv();
     tax = Math.round(Math.max(0, S.gold - 1500) * 0.04 + lvls * 12 + guild);
-    if (tax) lines.push(`Недельный сбор гильдии: −${tax} мон. (4% с запаса сверх 1500, 12 за уровень построек${guild ? `, ${guild} за «Ленту» и Большой рынок` : ''}).`);
+    if (tax) lines.push(`Недельный сбор гильдии: −${tax} мон. (4% с запаса сверх 1500, 12 за уровень построек${guild ? `, ${guild} за «Ленту» и биржу` : ''}).`);
     if (core.prest >= 70) { S.rep += 1; lines.push('Солидный район: репутация +1.'); } else if (core.prest <= 20) { S.rep = Math.max(0, S.rep - 1); lines.push('О вашем районе дурная слава: репутация −1.'); }
   }
   S.gold += inc - upk - tax; S.totalEarned += inc;
@@ -669,7 +666,7 @@ function estDayEnd() {
   }
   for (const c of S.owned) { if (c._autoRest) { c.bld = E.b[c._autoRest] ? c._autoRest : null; c.task = c._autoTask || c.task; delete c._autoRest; delete c._autoTask; } }
   for (const c of S.owned) if (c.bld && c.bld[0] === '@') { const b = E.b[c.bld.slice(1)]; if (!b || !b.job) c.bld = null; }
-  for (const c of S.owned) if (c.bld && E.b[c.bld] && E.b[c.bld].t === 'brothel' && c.loyalty < 25) { c.bld = null; addLog(`${fn1(c)} больше не хочет работать в «Ленте» (лояльность ниже 25).`); if (E.last) E.last.lines.push(`${fn1(c)} ушл${g(c, 'и', 'а')} из «Ленты» — не хочет.`); }
+  for (const c of S.owned) if (c.bld && E.b[c.bld] && E.b[c.bld].t === 'brothel' && c.loyalty < 25) { c.bld = null; addLog(`${fn1(c)} попросил${g(c, '', 'а')} перевести с работы в «Ленте» (лояльность ниже 25).`); if (E.last) E.last.lines.push(`${fn1(c)} больше не работает в «Ленте» — по своей просьбе.`); }
   const hp = E.last ? E.last.happy : 50, ds = -Math.round((hp - 50) / 10);
   if (ds) for (const c of S.owned) c.stress = clamp(c.stress + ds);
   for (const k in BT) { const d = E.dem[k] + (R() - 0.5) * 0.16 + (1 - E.dem[k]) * 0.15; E.dem[k] = +clamp(d, 0.65, 1.45).toFixed(2); }
@@ -680,7 +677,7 @@ function estDayEnd() {
   if (E.ev && E.last) E.last.lines.push(`Новое событие: ${CEV[E.ev.k].t(E.ev)} — решите во «Владениях».`);
 }
 
-// ---------- рынок: Большой рынок заменяет старый ----------
+// ---------- найм: своя биржа заменяет городскую ----------
 function aucFee() { return +(0.08 - 0.01 * mktLv()).toFixed(2); }
 (function () {
   const oPrice = window.price; window.price = function (c) { const v = oPrice.apply(this, arguments); try { const lv = mktLv(); if (lv && S.market && S.market.includes(c)) return Math.round(v * (1 - MKT.disc[lv])); } catch (e) { } return v; };
@@ -690,32 +687,32 @@ function aucFee() { return +(0.08 - 0.01 * mktLv()).toFixed(2); }
   const oRef = window.refreshMarket; window.refreshMarket = function () { const free = refreshCost() === 0; const r = oRef.apply(this, arguments); if (free) { estOf().freeRef = S.day; S.refreshN = Math.max(0, S.refreshN - 1); save(); render(); } return r; };
   const oUp = window.upkeep; window.upkeep = function () { const r = oUp.apply(this, arguments); try { const lv = lvSum('farm'); if (lv) { const cut = Math.round(r.food * Math.min(0.45, lv * 0.06)); r.food -= cut; r.total -= cut; } } catch (e) { } return r; };
   const oVM = window.viewMarket; window.viewMarket = function () {
-    const lv = mktLv(); if (!lv) return oVM.apply(this, arguments).replace('</h1>', '</h1><div class="small muted">Рынок гильдии работорговцев. Свой Большой рынок — во «Владениях».</div>');
+    const lv = mktLv(); if (!lv) return oVM.apply(this, arguments).replace('</h1>', '</h1><div class="small muted">Городская биржа гильдии наймитов. Свою биржу можно открыть во «Владениях».</div>');
     const E = estOf(), all = S.market, rf = UI.mrar == null ? -1 : UI.mrar, so = UI.msort || 'new';
     let list = all.filter(c => rf < 0 || c.rarity === rf);
     if (so === 'cheap') list = list.slice().sort((a, b) => price(a) - price(b)); else if (so === 'dear') list = list.slice().sort((a, b) => price(b) - price(a)); else if (so === 'rare') list = list.slice().sort((a, b) => b.rarity - a.rarity);
     S.market = list; let h; try { h = oVM.apply(this, arguments); } finally { S.market = all; }
     const left = stableBuyersLeft(), sale = E.saleDay === S.day, soon = E.saleDay > S.day;
-    const panel = `<div class="panel parchment bigmkt"><div class="panel-title">Ваш Большой рынок · ур. ${lv}${sale ? ' · <b class="pos">ДЕНЬ РАСПРОДАЖИ</b>' : ''}</div>
-      <div class="small">Лотов: ${all.length} · скидка на покупку ${Math.round(MKT.disc[lv] * 100)}% · продажа +${Math.round(MKT.sell[lv] * 100)}% · аукцион ${Math.round(aucFee() * 100)}%${lv >= 2 ? ` · бесплатный привоз ${E.freeRef === S.day ? 'использован' : 'доступен'}` : ''}</div>
+    const panel = `<div class="panel parchment bigmkt"><div class="panel-title">Ваша биржа найма · ур. ${lv}${sale ? ' · <b class="pos">ДЕНЬ НАЙМА</b>' : ''}</div>
+      <div class="small">Соискателей: ${all.length} · подъёмные −${Math.round(MKT.disc[lv] * 100)}% · комиссия за трудоустройство +${Math.round(MKT.sell[lv] * 100)}% · аукцион ${Math.round(aucFee() * 100)}%${lv >= 2 ? ` · бесплатное объявление ${E.freeRef === S.day ? 'использован' : 'доступен'}` : ''}</div>
       <div class="m-tools">${[['new', 'Новые'], ['cheap', 'Дешевле'], ['dear', 'Дороже'], ['rare', 'Редкие']].map(([k, n]) => `<button class="fchip ${so === k ? 'on' : ''}" data-msort="${k}">${n}</button>`).join('')}</div>
       <div class="m-tools">${[[-1, 'Любая редкость'], [0, RARITIES[0].fname || RARITIES[0].name], [1, RARITIES[1].fname || RARITIES[1].name], [2, RARITIES[2].fname || RARITIES[2].name], [3, RARITIES[3].fname || RARITIES[3].name]].map(([k, n]) => `<button class="fchip ${rf === k ? 'on' : ''}" data-mrar="${k}">${esc(n)}</button>`).join('')}</div>
-      <div class="panel-title small">Загон для перепродажи ${E.stable.length}/${stableCap()} · покупателей сегодня: ${Math.max(0, left)}</div>
-      ${E.stable.map(c => `<div class="bw-row stable-row"><b>${esc(fn1(c))}</b> <span class="small muted">${esc(rarityName(c))} · куплено за ${fmt(c.boughtFor || 0)}</span> <button class="btn small" data-csell="${c.uid}" ${c.stockDay >= S.day ? 'disabled' : ''}>Продать · ${fmt(stablePrice(c))}</button> <button class="btn small" data-ctake="${c.uid}">В поместье</button></div>`).join('') || '<div class="small muted">Пусто. Кнопка «В загон» на карточках рынка — купить для перепродажи (место в поместье не нужно, корм 8 мон./день).</div>'}
-      <div class="btn-row"><button class="btn small" data-csale="1" ${soon ? 'disabled' : ''}>${soon ? `Распродажа в день ${E.saleDay}` : 'Объявить распродажу · 300'}</button></div>
-      <div class="small muted">Распродажа: раз в неделю, через 2 дня после объявления — втрое больше покупателей, +15% к цене продажи из загона и 4 редких лота.</div></div>`;
-    return h.replace('<h1>Рынок</h1>', '<h1>Большой невольничий рынок</h1>').replace('<div class="m-tools">', panel + '<div class="m-tools">').replace(/(Новый привоз · )0/, '$1бесплатно');
+      <div class="panel-title small">Кадровый резерв ${E.stable.length}/${stableCap()} · нанимателей сегодня: ${Math.max(0, left)}</div>
+      ${E.stable.map(c => `<div class="bw-row stable-row"><b>${esc(fn1(c))}</b> <span class="small muted">${esc(rarityName(c))} · подъёмные ${fmt(c.boughtFor || 0)}</span> <button class="btn small" data-csell="${c.uid}" ${c.stockDay >= S.day ? 'disabled' : ''}>Устроить на место · +${fmt(stablePrice(c))}</button> <button class="btn small" data-ctake="${c.uid}">Взять к себе</button></div>`).join('') || '<div class="small muted">Пусто. Кнопка «В резерв» на карточках соискателей — взять человека в резерв биржи и подыскать ему место у другого нанимателя (место в хозяйстве не нужно, содержание 8 мон./день).</div>'}
+      <div class="btn-row"><button class="btn small" data-csale="1" ${soon ? 'disabled' : ''}>${soon ? `День найма — ${E.saleDay}` : 'Объявить день найма · 300'}</button></div>
+      <div class="small muted">День найма: раз в неделю, через 2 дня после объявления — втрое больше нанимателей, +15% к комиссии из резерва и 4 редких мастера.</div></div>`;
+    return h.replace('<h1>Биржа найма</h1>', '<h1>Большая биржа найма</h1>').replace('<div class="m-tools">', panel + '<div class="m-tools">').replace(/(Дать объявление · )0/, '$1бесплатно');
   };
 })();
 
 // ---------- цели и вехи ----------
-GOAL_POOL.push(['builder', 'Поставить кого-то на стройку', 1, 80, 0, () => bList().some(([, b]) => b.job)], ['event', 'Решить городское событие', 1, 90, 0, () => !!estOf().ev], ['stable', 'Продать человека из загона', 1, 120, 1, () => mktLv() > 0 && estOf().stable.length > 0]);
+GOAL_POOL.push(['builder', 'Поставить кого-то на стройку', 1, 80, 0, () => bList().some(([, b]) => b.job)], ['event', 'Решить городское событие', 1, 90, 0, () => !!estOf().ev], ['stable', 'Устроить человека из резерва на место', 1, 120, 1, () => mktLv() > 0 && estOf().stable.length > 0]);
 MILESTONES.push(
   ['dist', 'Купить новый район', () => Object.keys(S.est.dist || {}).length >= 2, 600, 2],
   ['brot', 'Открыть «Шёлковую ленту»', () => bList('brothel').some(([, b]) => b.lv), 700, 1],
   ['b6', 'Шесть зданий в городе', () => bList().filter(([, b]) => b.lv).length >= 6, 1200, 3],
   ['hap70', 'Счастье города 70+', () => cityCore().happy >= 70, 900, 3], ['saf70', 'Безопасность 70+', () => cityCore().safe >= 70, 900, 3],
-  ['mkt', 'Свой Большой невольничий рынок', () => mktLv() >= 1, 3000, 5], ['mkt3', 'Большой рынок 3-го уровня', () => mktLv() >= 3, 6000, 8]);
+  ['mkt', 'Своя биржа найма', () => mktLv() >= 1, 3000, 5], ['mkt3', 'Биржа найма 3-го уровня', () => mktLv() >= 3, 6000, 8]);
 
 // ---------- проводка ----------
 (function () {
@@ -724,8 +721,8 @@ MILESTONES.push(
     const r = oRender.apply(this, arguments);
     try {
       const lv = mktLv(), nb = document.querySelector('.nav-btn[data-go="market"]');
-      if (nb) { const sp = nb.querySelector('span') || nb; if (lv && !/Б\. рынок/.test(sp.textContent)) { sp.childNodes.forEach(n => { if (n.nodeType === 3 && /Рынок/.test(n.textContent)) n.textContent = n.textContent.replace('Рынок', 'Б. рынок'); }); } }
-      if (UI.screen === 'market' && lv) document.querySelectorAll('#screen .m-card[data-open]').forEach(el => { if (!el.querySelector('.stab-btn')) el.insertAdjacentHTML('beforeend', `<button class="stab-btn" data-cstab="${el.dataset.open}">В загон</button>`); });
+      if (nb) { const sp = nb.querySelector('span') || nb; if (lv && !/Биржа/.test(sp.textContent)) { sp.childNodes.forEach(n => { if (n.nodeType === 3 && /Найм/.test(n.textContent)) n.textContent = n.textContent.replace('Найм', 'Биржа'); }); } }
+      if (UI.screen === 'market' && lv) document.querySelectorAll('#screen .m-card[data-open]').forEach(el => { if (!el.querySelector('.stab-btn')) el.insertAdjacentHTML('beforeend', `<button class="stab-btn" data-cstab="${el.dataset.open}">В резерв</button>`); });
       if (UI.screen === 'manor' && S.est && S.est.ev) { const h = document.querySelector('#screen .screen-head'); if (h) h.insertAdjacentHTML('afterend', evBanner()); }
     } catch (e) { console.warn('v11 render', e); }
     return r;
@@ -765,11 +762,11 @@ MILESTONES.push(
     const i = HELP.findIndex(h => h[0] === 'estate'); if (i >= 0) HELP.splice(i, 1);
     HELP.push(['estate', 'Владения и город', () => `<p><b>Карта.</b> Центр с 4 участками и площадью бесплатно. Районы покупаются: Ремесленная слобода, Каменный холм (каменоломне ×1.25), Сады (огородам и скверам ×1.15), Речной квартал (купальням, таверне, огородам ×1.15). Нажмите «+» на участке — откроется меню стройки по категориям.</p>
       <p><b>Стройка</b> идёт днями: наёмная артель даёт 12 ед. в день, а ваши люди-строители — ещё 2 + (Сила + Выносливость)/8 + Мастерство/12 (не меньше 5). С 3-го уровня нужны камень и инструменты — со своей каменоломни и мастерской (режим «на склад») или у поставщика. Пока идёт улучшение, здание работает на старом уровне. Здания можно сносить (вернётся 30%) и переносить (20%, день простоя).</p>
-      <p><b>Соседство.</b> Таверна у рынка, «Лента» у купален и таверны, мастерская у каменоломни, библиотека у сквера — бонусы; библиотека рядом с «Лентой» — минус. Караульня рядом помогает рынку, таверне и «Ленте».</p>
+      <p><b>Соседство.</b> Таверна у рынка, «Лента» у купален и таверны, мастерская у каменоломни, библиотека у сквера — бонусы; библиотека рядом с шумной «Лентой» — минус. Караульня рядом помогает рынку, таверне и «Ленте».</p>
       <p><b>Показатели.</b> Репутация района влияет на доход всех зданий, счастье — на выработку и стресс жителей, безопасность — на пожары и кражи. Нажмите на показатель — «Почему так». Содержание платится каждый день, раз в неделю — сбор гильдии.</p>
       <p><b>События</b> (пожар, проверка, праздник, кража, знатный гость…) ждут вашего решения до конца дня, иначе выбирается вариант по умолчанию.</p>
-      <p><b>«Шёлковая лента»</b> — дом утех, уровни 1–5, до 8 мест. Работают только взрослые, согласные (лояльность 35+) и не в положении; ниже 25 — уходят. Порядки: Салон (тихо, ×0.7), Обычный, Роскошь (×1.35, но стресс, лояльность и гильдия). Купальни рядом снимают стресс и защищают от хворей. Всё, что за дверью, — за кадром.</p>
-      <p><b>Большой невольничий рынок</b> — выкупить у гильдии (${fmt(MKT.buy)} мон., ранг D+) или построить в 3 этапа силами своих людей (≈12 000 мон. + материалы). Заменяет старый рынок: больше лотов и редкостей, скидка 6–14%, продажа +4–10%, ниже комиссия аукциона, загон для перепродажи, сортировка и фильтры, дни распродаж.</p>
+      <p><b>«Шёлковая лента»</b> — чайный дом, уровни 1–5, до 8 мест. Работают только желающие (лояльность 35+); ниже 25 — просят перевести. Вечера: тихие чаепития (×0.7), обычные, пышные приёмы (×1.35, но стресс, поздние смены и проверки). Купальни рядом снимают стресс и защищают от простуды.</p>
+      <p><b>Большая биржа найма</b> — выкупить у гильдии (${fmt(MKT.buy)} мон., ранг D+) или построить в 3 этапа силами своих людей (≈12 000 мон. + материалы). Заменяет городскую биржу: больше соискателей и редких мастеров, подъёмные −6–14%, комиссия за трудоустройство +4–10%, ниже сбор аукциона, кадровый резерв, сортировка и фильтры, дни найма.</p>
       <p><b>Авто-управление</b> ставит лучших свободных людей в здания и на стройки и даёт отдых уставшим (усталость 75+). «Ленту» трогает только с отдельной галочкой.</p>`]);
   } catch (e) { }
 })();

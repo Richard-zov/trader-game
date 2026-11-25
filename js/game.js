@@ -27,12 +27,12 @@ function plural(n, one, few, many) {
 }
 const dn = (n) => n + ' ' + plural(n, 'день', 'дня', 'дней');
 const g = (c, m, f) => (c.g === 'f' ? f : m);
-// обращение к игроку по выбранному полу: {Х}/{х} хозяин(ка), {Г}/{г} господин/госпожа, {пг:муж|жен}
+// обращение к игроку по выбранному полу: {Х}/{х} управляющий/управляющая, {Г}/{г} сударь/сударыня, {пг:муж|жен}
 const playerFem = () => typeof S !== 'undefined' && S && S.playerG === 'f';
 function addr(s) {
   if (!s || s.indexOf('{') < 0) return s;
   const f = playerFem();
-  return s.replace(/\{([ХхГг])\}/g, (_, k) => ({ Х: f ? 'Хозяйка' : 'Хозяин', х: f ? 'хозяйка' : 'хозяин', Г: f ? 'Госпожа' : 'Господин', г: f ? 'госпожа' : 'господин' })[k])
+  return s.replace(/\{([ХхГг])\}/g, (_, k) => ({ Х: f ? 'Управляющая' : 'Управляющий', х: f ? 'управляющая' : 'управляющий', Г: f ? 'Сударыня' : 'Сударь', г: f ? 'сударыня' : 'сударь' })[k])
     .replace(/\{пг:([^|}]*)\|([^}]*)\}/g, (_, m, w) => (f ? w : m));
 }
 const esc = (s) => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
@@ -129,7 +129,7 @@ function rollGear(presetId, rarity) {
   const r = R();
   if (arts && r < 0.8) out.push(makeGear('outfit', pick(arts), rollQ(rarity * 0.04)));
   else if (!arts && r < 0.45) out.push(makeGear('outfit', pick(OUTFITS_CLASSIC), rollQ(rarity * 0.04)));
-  // небольшой износ у товара с рынка
+  // небольшой износ у вещей соискателя
   for (const it of out) it.dur = Math.max(1, it.maxDur - rint(0, Math.round(it.maxDur * 0.4)));
   return out;
 }
@@ -201,7 +201,7 @@ function tickEconomy() {
   }
   if (--E.hotDays <= 0) { E.hot = pick(Object.keys(TRAITS)); E.hotDays = rint(3, 5); }
 }
-// Продажа и покупка двигают спрос: рынок насыщается
+// Найм и устройство на место двигают спрос: биржа насыщается
 function supplyShock(race, v) { S.econ.race[race] = +clamp(S.econ.race[race] + v, 0.6, 1.6).toFixed(3); }
 
 // ---------- расчёты ----------
@@ -252,8 +252,6 @@ function incomeInfo(c, task) {
   if (task === 'shop' && evNum('shop')) parts.push([mev().name.toLowerCase(), 1 + evNum('shop')]);
   if (task === 'craft' && evNum('craft')) parts.push([mev().name.toLowerCase(), 1 + evNum('craft')]);
   if (task === 'shop') parts.push(['спрос в городе', 0.85 + 0.15 * (S.econ.race[c.race] || 1)]);
-  if (c.preg) parts.push(['в положении', 0.5]);
-  if (inHeat(c)) parts.push(['течка', 0.8]);
   const mult = parts.reduce((a, p) => a * p[1], 1);
   return { base, mult, parts, v: Math.round(base * mult) };
 }
@@ -270,7 +268,6 @@ function trainInfo(c) {
 function fatigueGain(c, v) {
   v *= 1 - eff(c, 'end') / 300;
   if (has(c, 'lazy')) v *= 1.3;
-  if (c.preg) v *= 1.2;
   v += season().fat || 0;
   c.fatigue = clamp(c.fatigue + v);
   return Math.round(v);
@@ -287,7 +284,6 @@ function foodCost(c) {
   let f = 10;
   if (c.race === 'dwarf') f = 12;
   if (c.preset === 'm06' || c.preset === 'f19') f = 18;
-  if (c.preg) f += 8;
   return f * (season().food || 1) * evNum('food', 1);
 }
 function upkeep() {
@@ -300,16 +296,7 @@ function upkeep() {
 function raceName(c) { const r = RACES[c.race]; return c.g === 'f' && r.fname ? r.fname : r.name; }
 function rarityName(c) { const r = RARITIES[c.rarity]; return c.g === 'f' ? r.fname : r.name; }
 function statName(k) { return STATS.find(s => s.key === k).name; }
-function attracted(a, b) { if (a.orient === 'bi') return true; if (a.orient === 'hetero') return a.g !== b.g; return a.g === b.g; }
-function compatHint(a, b) {
-  const ab = attracted(a, b), ba = attracted(b, a);
-  if (ab && ba) return { lvl: 2, text: 'Между ними явно проскакивает искра' };
-  if (ab || ba) return { lvl: 1, text: 'Интерес, похоже, не взаимный' };
-  return { lvl: 0, text: 'Вежливы друг с другом — и только' };
-}
-function prefHint(c) {
-  return { hetero: 'Мечтает о встрече «как в старых сказках»', bi: g(c, 'Влюбчив', 'Влюбчива') + ': симпатии не делит по правилам', homo: 'Сердце тянется к родственной душе особого склада' }[c.orient];
-}
+function prefHint(c) { return ''; }
 
 // ---------- состояние ----------
 function freshEcon() {
@@ -380,7 +367,7 @@ const findOwned = (uid) => S.owned.find(c => c.uid === uid);
 const findAny = (uid) => findOwned(uid) || S.market.find(c => c.uid === uid);
 function homeChars() { return S.owned.filter(c => c.status === 'home'); }
 
-// ---------- рынок ----------
+// ---------- биржа найма ----------
 function marketSize() { return Math.min(16, 8 + Math.floor(rankIdx() * 0.7) + evNum('extra')); }
 function rollMarket() {
   const n = marketSize();
@@ -398,10 +385,10 @@ function rollMarket() {
 function refreshCost() { return 60 + 20 * S.refreshN; }
 function refreshMarket() {
   const cost = refreshCost();
-  if (S.gold < cost) { sfx('bad'); return toast('Новый привоз стоит ' + cost + ' мон.'); }
+  if (S.gold < cost) { sfx('bad'); return toast('Объявление стоит ' + cost + ' мон.'); }
   S.gold -= cost; S.refreshN++;
   rollMarket(); makeNews();
-  sfx('coin'); toast('Перекупщики привели новых людей.'); save(); render();
+  sfx('coin'); toast('По объявлению пришли новые соискатели.'); save(); render();
 }
 function rollGearShop() {
   S.gearShop = [];
@@ -440,20 +427,20 @@ function makeNews() {
   const up = races[0], dn_ = races[races.length - 1];
   if (E.trend[up] > 0.015) n.push(`${RACES[up].plural} дорожают: спрос ×${E.race[up].toFixed(2)} и растёт ↑`);
   if (E.trend[dn_] < -0.015) n.push(`${RACES[dn_].plural} дешевеют: спрос ×${E.race[dn_].toFixed(2)} ↓ — время покупать`);
-  n.push(`Покупатели ищут черту «${TRAITS[E.hot].name}»: +15% к цене ещё ${dn(E.hotDays)}`);
+  n.push(`Наниматели ищут черту «${TRAITS[E.hot].name}»: +15% к ценности ещё ${dn(E.hotDays)}`);
   const s = season();
   n.push(`${s.name}: ${s.desc}. До смены сезона ${dn(seasonLeft())}`);
   if (S.mevent) n.push(`${mev().name}: ещё ${dn(S.mevent.left)}`);
   if (S.nextEv) n.push('Слухи: ' + MARKET_EVENTS[S.nextEv.id].rumor);
-  if (S.visitor) n.push({ merchant: 'На рынке заморский купец с редким товаром!', appraiser: 'Странствующий оценщик сегодня смотрит всех бесплатно', bargain: 'Кто-то распродаёт товар со скидкой 40%' }[S.visitor.kind]);
+  if (S.visitor) n.push({ merchant: 'На бирже — артель из дальних краёв: редкие мастера ищут работу!', appraiser: 'Писарь гильдии сегодня бесплатно показывает рекомендации всех соискателей', bargain: 'Один соискатель очень спешит устроиться: подъёмные на 40% ниже' }[S.visitor.kind]);
   if (S.debt > 0) n.push(`Долг гоблину-ростовщику: ${fmt(S.debt)} мон. (2% в день)`);
-  const tips = ['Совет: уставшие работают хуже — отдых тоже доход', 'Совет: высокая лояльность поднимает цену на 25%', 'Совет: Воля снижает стресс, Выносливость — усталость',
-    'Совет: снаряжение изнашивается на работе — чините в таверне', 'Совет: перед продажей поднимите настроение — покупатель это видит', 'Совет: наследники учатся почти вдвое быстрее, пока юный дар не угас'];
+  const tips = ['Совет: уставшие работают хуже — отдых тоже доход', 'Совет: высокая лояльность поднимает ценность работника на 25%', 'Совет: Воля снижает стресс, Выносливость — усталость',
+    'Совет: снаряжение изнашивается на работе — чините в таверне', 'Совет: довольные работники реже уходят и лучше работают', 'Совет: повышение в должности даёт прибавку к доходу и лояльности'];
   n.push(pick(tips));
   S.news = n;
 }
 
-// ---------- действия: рынок ----------
+// ---------- действия: найм ----------
 function buy(uid, discountPct = 0) {
   const c = S.market.find(x => x.uid === uid); if (!c) return;
   if (S.owned.length >= S.capacity) { sfx('bad'); return toast('В поместье нет свободных мест (' + S.capacity + ').'); }
@@ -463,19 +450,20 @@ function buy(uid, discountPct = 0) {
   S.market = S.market.filter(x => x !== c);
   c.priceAdj = 1; c.haggleLock = false; c.discount = 0; c.bargain = false; c.task = 'rest'; c.boughtFor = cost;
   S.owned.push(c); supplyShock(c.race, 0.02);
-  addLog(`Куплен${g(c, '', 'а')} ${c.name} за ${fmt(cost)} мон.`);
-  toast(`${fn1(c)} теперь живёт в вашем поместье.`); sfx('buy');
+  if (typeof staffHire === 'function') staffHire(c, cost);
+  addLog(`Нанят${g(c, '', 'а')} ${c.name}: подъёмные ${fmt(cost)} мон.`);
+  toast(`${fn1(c)} подписал${g(c, '', 'а')} договор и заселил${g(c, 'ся', 'ась')} в работницкий дом.`); sfx('buy');
   save(); openCard(c.uid, 'owned');
 }
 function sell(uid, markupPct = 0) {
   const c = findOwned(uid); if (!c) return;
   if (c.status !== 'home') return toast('Сначала дождитесь, пока закончится заказ.');
-  if (c.preg) return toast('Её никто не купит, пока она в положении — да и вы бы не стали.');
+  if (typeof placeBlock === 'function') { const pb = placeBlock(c); if (pb) return toast(pb); }
   const got = Math.round(sellPrice(c) * (1 + markupPct / 100));
   S.gold += got; S.totalEarned += got;
   S.owned = S.owned.filter(x => x !== c); supplyShock(c.race, -0.03);
-  addLog(`Продан${g(c, '', 'а')} ${c.name} за ${fmt(got)} мон.`);
-  toast(`Сделка закрыта: +${fmt(got)} мон.`); sfx('sell');
+  addLog(`${c.name} перешл${g(c, 'ёл', 'а')} на новое место по вашей рекомендации. Комиссия ${fmt(got)} мон.`);
+  toast(`${fn1(c)} устроен${g(c, '', 'а')} на новое место: +${fmt(got)} мон. комиссии.`); sfx('sell');
   save(); go('manor');
 }
 function haggleChance(p, c) {
@@ -492,7 +480,7 @@ function appraise(uid) {
   toast('Оценщик раскрыл скрытый потенциал.'); save(); render();
 }
 
-// ---------- забота и строгость ----------
+// ---------- забота и работа ----------
 function act(uid, kind) {
   const c = findOwned(uid); if (!c) return;
   let msg = '';
@@ -504,7 +492,7 @@ function act(uid, kind) {
       const base = (c.goodDeed ? 5 : 2) * (m >= 50 ? 1 : 0.6);
       const v = loyaltyGain(c, base); c.moodMod += 6; c.stress = clamp(c.stress - 3);
       msg = c.goodDeed ? `${fn1(c)} сияет: похвала заслуженная. Лояльность +${v}.` : `${fn1(c)} улыбается. Лояльность +${v}${m < 50 ? ' (в плохом настроении похвала действует слабее)' : ''}.`;
-      react(c, 'smile', gx(c, c.goodDeed ? 'Спасибо, {х}! Я так старал{ся|ась}!' : toneOf(c) === 'sullen' ? '*кланяется* Благодарю, {х}.' : 'Благодарю, {х}! Я буду стараться ещё больше.'));
+      react(c, 'smile', gx(c, c.goodDeed ? 'Спасибо, {х}! Я правда старал{ся|ась}.' : toneOf(c) === 'sullen' ? '*кивает* Приятно слышать, {х}.' : 'Спасибо, {х}! Доброе слово — тоже плата.'));
       c.goodDeed = false; sfx('sparkle');
       break;
     }
@@ -514,11 +502,11 @@ function act(uid, kind) {
       S.gold -= 60; c.giftDay = S.day;
       const v = loyaltyGain(c, c.loyalty < 30 ? 8 : 6); c.moodMod += 15;
       msg = `Подарок пришёлся по душе. Лояльность +${v}, настроение +15.`;
-      react(c, 'blush', gx(c, toneOf(c) === 'sullen' ? '*удивлённо поднимает глаза* Это мне, {х}?.. Спасибо.' : 'Это… мне, {х}? Спасибо! Я не подведу.')); sfx('coin');
+      react(c, 'smile', gx(c, toneOf(c) === 'sullen' ? '*удивлённо поднимает глаза* Это мне, {х}?.. Спасибо.' : 'Это мне, {х}? Спасибо! Приятно работать у того, кто замечает.')); sfx('coin');
       break;
     }
     case 'scold': {
-      if (c.disciplineDay === S.day) return toast('На сегодня строгости достаточно.');
+      if (c.disciplineDay === S.day) return toast('Сегодня разговор о работе уже был.');
       c.disciplineDay = S.day; c.misdeed = hasFault(c);
       let d = c.misdeed ? 20 : 12, l = c.misdeed ? 0 : -8;
       if (c.race === 'dwarf' || has(c, 'stubborn')) d /= 2;
@@ -526,14 +514,13 @@ function act(uid, kind) {
       if (c.race === 'beast') l -= 3;
       if (c.loyalty >= 70 && c.misdeed) l += 1;
       c.discipline = clamp(c.discipline + d); const st = stressGain(c, 10); loyaltyGain(c, l);
-      msg = c.misdeed ? `Выговор по делу. Дисциплина +${d}, стресс +${st}.` : `Выговор без повода: дисциплина +${d}, но лояльность ${l}. Обидно.`;
-      react(c, 'back', gx(c, c.misdeed ? '{Понял|Поняла}, {х}. Простите, я исправлюсь…' : '*опускает голову* Простите, {х}… я не понимаю, в чём провинил{ся|ась}.')); sfx('bad');
+      msg = c.misdeed ? `Разобрали промах по делу. Собранность +${d}, стресс +${st}.` : `Замечание без повода: собранность +${d}, но лояльность ${l}. Обидно.`;
+      react(c, 'frown', gx(c, c.misdeed ? 'Справедливо, {х}. Учту и исправлю.' : 'Не понимаю, {х}, к чему это. Я ведь работал{|а} как надо.')); sfx('bad');
       resolveFault(c);
       break;
     }
     case 'nosweets': {
-      if (c.disciplineDay === S.day) return toast('На сегодня строгости достаточно.');
-      c.disciplineDay = S.day; c.misdeed = hasFault(c);
+      return toast('Так с работниками не поступают.');
       let d = 8; if (c.race === 'dwarf' || has(c, 'stubborn')) d = 4;
       const l = c.misdeed ? -1 : -5;
       c.discipline = clamp(c.discipline + d); c.moodMod -= has(c, 'gourmet') ? 25 : 12; loyaltyGain(c, l);
@@ -555,13 +542,6 @@ function act(uid, kind) {
   toast(msg); save(); render();
 }
 
-// Погладить по голове: приятно, если есть доверие. С каждым разом за день эффект слабее.
-const PET_LINES = {
-  beast: ['Мр-р-р… спасибо, {х}…', 'Мрр… ещё, пожалуйста, {х}…', 'Мур-р… вот тут, за ушком, {х}…', '*довольно жмурится*'],
-  other: ['М-м… как спокойно, {х}…', 'Спасибо, {х}.', '*прикрывает глаза*'],
-  tired: ['Спасибо, {х}… на сегодня довольно, если позволите.', 'Причёска растреплется, {х}… но как скажете.'],
-  shy: ['*съёживается* Простите, {х}…', '…Да, {х}.', 'Как прикажете, {х}.'],
-};
 function setTask(uid, task) {
   const c = findOwned(uid); if (!c || c.status !== 'home') return;
   if (assignTask(c, task)) { save(); render(); }
@@ -570,15 +550,11 @@ function setTrainStat(uid, k) { const c = findOwned(uid); if (c) { c.trainStat =
 function freeChar(uid, ransom) {
   const c = findOwned(uid); if (!c) return;
   if (c.status !== 'home') return toast('Сначала дождитесь, пока закончится заказ.');
-  let txt;
   for (const it of c.gear) S.stash.push(it); c.gear = [];
-  if (ransom) {
-    const r = Math.round(price(c) * 0.4); S.gold += r; S.rep += 4;
-    txt = `${c.name} внес${g(c, '', 'ла')} выкуп ${fmt(r)} мон. и уш${g(c, 'ёл', 'ла')} вольным человеком. Репутация +4. Снаряжение вернулось в сундук.`;
-  } else {
-    const rp = 8 + Math.round(c.loyalty / 20); S.rep += rp;
-    txt = `${c.name} получил${g(c, '', 'а')} вольную. В городе о вас говорят с теплом. Репутация +${rp}. Снаряжение вернулось в сундук.`;
-  }
+  const sev = typeof severanceOf === 'function' ? severanceOf(c) : 0;
+  S.gold -= sev;
+  const rp = 2 + Math.round(c.loyalty / 25); S.rep += rp;
+  const txt = `${c.name} получил${g(c, '', 'а')} расчёт${sev ? ` (${fmt(sev)} мон. выходного пособия)` : ''} и добрую рекомендацию. В городе говорят, что у вас честно платят. Репутация +${rp}. Снаряжение вернулось в сундук.`;
   S.owned = S.owned.filter(x => x !== c);
   addLog(txt); toast(txt); save(); go('manor');
 }
@@ -675,114 +651,6 @@ function expand() {
   addLog(`Поместье расширено до ${e.cap} мест.`); toast(`Плотники пристроили флигель: теперь ${e.cap} мест.`); save(); render();
 }
 
-// ---------- «Спарить»: свидание пары и беременность ----------
-function isKin(a, b) {
-  return (a.kin || []).includes(b.uid) || (b.kin || []).includes(a.uid) || !!(a.kin && b.kin && a.kin.some(u => b.kin.includes(u)));
-}
-function mateCheck(a, b) {
-  if (a.g === b.g) return { ok: false, why: 'Нужна пара мужчины и женщины.' };
-  const f = a.g === 'f' ? a : b;
-  if (a.status !== 'home' || b.status !== 'home') return { ok: false, why: 'Кто-то из пары сейчас на заказе.' };
-  if (isKin(a, b)) return { ok: false, why: 'Они родня — это невозможно.' };
-  if (f.preg) return { ok: false, why: `${fn1(f)} уже в положении.` };
-  if (f.mateDay === S.day) return { ok: false, why: `${fn1(f)} сегодня уже была на свидании — только раз в день.` };
-  if (S.owned.length + S.owned.filter(x => x.preg).length >= S.capacity) return { ok: false, why: 'В поместье нет места для будущего наследника — сначала расширьте дом.' };
-  return { ok: true };
-}
-function mateInfo(a, b) {
-  const f = a.g === 'f' ? a : b, m = a.g === 'm' ? a : b;
-  const h = compatHint(a, b);
-  const avgMood = (mood(a) + mood(b)) / 2, avgLoy = (a.loyalty + b.loyalty) / 2, avgHp = (a.health + b.health) / 2;
-  const willing = clamp(0.3 + h.lvl * 0.2 + (avgMood - 50) / 120 + (avgLoy - 40) / 150, 0.1, 0.98);
-  const preg = clamp(0.15 + f.breed.fert / 100 * 0.35 + m.breed.line / 100 * 0.2 + (avgHp - 70) / 300 + (avgMood - 50) / 250 + h.lvl * 0.05 + (season().fert || 0) - (m.fatigue > 70 ? 0.08 : 0), 0.05, 0.9);
-  const hw = inHeat(f) ? 0.2 : 0, hp = inHeat(f) ? 0.15 : 0;
-  return { f, m, h, willing: clamp(willing + hw, 0.1, 0.98), preg: clamp(preg + hp, 0.05, 0.9) };
-}
-function snapOf(c) { return JSON.parse(JSON.stringify({ uid: c.uid, name: c.name, preset: c.preset, race: c.race, g: c.g, rarity: c.rarity, pot: c.pot, traits: c.traits, breed: c.breed, kin: c.kin || [] })); }
-function mate(aUid, bUid) {
-  const a = findOwned(aUid), b = findOwned(bUid);
-  const chk = mateCheck(a, b); if (!chk.ok) return toast(chk.why);
-  const { f, m, willing, preg } = mateInfo(a, b);
-  closeModal();
-  f.mateDay = S.day;
-  if (R() > willing) {
-    loyaltyGain(a, -1); loyaltyGain(b, -1); stressGain(a, 4); stressGain(b, 4);
-    addLog(`${fn1(f)} и ${fn1(m)}: свидание не сложилось.`);
-    sfx('bad');
-    showModal('Не сложилось', `<p>Вечер не задался: ${esc(fn1(f))} и ${esc(fn1(m))} поговорили о погоде и разошлись по комнатам.</p><p class="muted small">Шанс согласия был ${Math.round(willing * 100)}%: его поднимают взаимная симпатия, настроение и доверие к вам. ${esc(fn1(f))} сможет попробовать снова завтра.</p>`);
-    save(); render(); return;
-  }
-  fatigueGain(m, 10); fatigueGain(f, 6); f.heatCare = S.day;
-  a.moodMod += 8; b.moodMod += 8; a.stress = clamp(a.stress - 5); b.stress = clamp(b.stress - 5);
-  const yes = R() < preg;
-  if (yes) f.preg = { due: S.day + 9, start: S.day, father: snapOf(m) };
-  addLog(`${fn1(f)} и ${fn1(m)} провели вечер вместе. ${yes ? 'Беременность!' : 'Без беременности.'}`);
-  sfx(yes ? 'sparkle' : 'pop');
-  showModal('Вечер вдвоём', `<div class="fade-scene"><p>Свечи догорают, ${esc(fn1(m))} тихо закрывает дверь…</p><p class="muted">…</p><p>Утром оба выглядят отдохнувшими и немного смущёнными.</p></div>
-    <div class="preg-res ${yes ? 'yes' : 'no'}">Беременность: <b>${yes ? 'да' : 'нет'}</b></div>
-    <p class="small">${yes ? `${esc(fn1(f))} будет в положении <b>9 дней</b>: работает вполсилы, не ходит на заказы, ест больше и иногда просит сладкого. Потом в поместье появится взрослый наследник.` : `Шанс был ${Math.round(preg * 100)}%. ${esc(fn1(f))} сможет попробовать снова завтра, ${esc(fn1(m))} — хоть сегодня.`}</p>`);
-  save(); render();
-}
-
-// Наследник: взрослый, похож на одного из родителей (тот же пресет), начинает со слабыми навыками
-function makeHeir2(mother, father) {
-  // от анонимного гостя салона — всегда похож на мать
-  const look = father.anon || father.uid === 'client' ? mother : R() < 0.5 ? mother : father;
-  const rarity = clamp(Math.max(mother.rarity, father.rarity) - (R() < 0.6 ? 1 : 0) + (R() < 0.08 ? 1 : 0), 0, 3);
-  const child = makeCharacter({ preset: look.preset, rarity, loyalty: 70, noGear: true });
-  const p = presetById(look.preset);
-  const parentFirst = look.name.split(' ')[0];
-  const usedN = new Set([...S.owned, ...S.market].map(x => x.name.split(' ')[0]));
-  let names = p.names.filter(n => n !== parentFirst && n !== mother.name.split(' ')[0] && !usedN.has(n));
-  if (!names.length) names = p.names.filter(n => n !== parentFirst);
-  child.name = pick(names.length ? names : p.names) + ' ' + mother.name.split(' ').slice(1).join(' ');
-  { const base = child.name; let k = 2; const taken = n => [...S.owned, ...(window._newborn || [])].some(x => x.name === n); while (taken(child.name)) child.name = base + ' ' + ['', '', 'II', 'III', 'IV', 'V', 'VI', 'VII'][Math.min(k++, 7)]; (window._newborn = window._newborn || []).push(child); }
-  for (const s of STATS) child.stats[s.key] = clamp(rint(4, 12) + Math.round((RACES[child.race].mods[s.key] || 0) / 2), 3, 20);
-  const pool = [];
-  for (const s of STATS) { pool.push({ k: s.key, v: mother.pot[s.key] }); pool.push({ k: s.key, v: father.pot[s.key] }); }
-  const quality = ((mother.breed.mat || 50) + (father.breed.her || 50)) / 200;
-  pool.sort((x, y) => y.v - x.v);
-  const taken = new Set(); child.inherited = [];
-  while (child.inherited.length < 3) {
-    const left = pool.filter(p => !taken.has(p.k));
-    const cand = R() < quality ? left[0] : pick(left);
-    taken.add(cand.k); child.pot[cand.k] = Math.max(child.pot[cand.k], cand.v); child.inherited.push(cand.k);
-  }
-  // полукровка: если раса отца другая — половина его расовых бонусов к потенциалу
-  if (father.race && father.race !== child.race && RACES[father.race]) {
-    child.mix = father.race;
-    for (const [k, v] of Object.entries(RACES[father.race].mods || {})) if (v > 0) child.pot[k] = clamp(child.pot[k] + Math.round(v / 2), 0, 100);
-  }
-  // гены анонимного отца: ещё один случайный потенциал повыше и случайная черта
-  if (father.anon) { const k = pick(STATS).key; child.pot[k] = clamp(child.pot[k] + rint(4, 12), 0, 100); }
-  const pTraits = shuffle([...new Set([...mother.traits, ...father.traits])]).slice(0, rint(1, 2));
-  child.traits = [...new Set([...pTraits, ...child.traits])].slice(0, 3);
-  if (child.traits.includes('cheerful') && child.traits.includes('sensitive')) child.traits.splice(child.traits.indexOf('sensitive'), 1);
-  if (child.traits.includes('diligent') && child.traits.includes('lazy')) child.traits.splice(child.traits.indexOf('lazy'), 1);
-  child.title = g(child, 'Наследник рода', 'Наследница рода');
-  child.parents = [mother.name, father.name];
-  child.kin = [mother.uid, father.uid, ...(mother.kin || []), ...(father.kin || [])];
-  child.age = child.race === 'elf' ? rint(60, 70) : child.race === 'dwarf' ? rint(30, 34) : rint(19, 21);
-  child.appraised = true; child.growth = 12; child.stress = 5; child.fatigue = 0; child.health = 100; child.discipline = 25;
-  child.look = look === mother ? 'mother' : 'father';
-  // одежда — от родителя, но другая, чем у него сейчас
-  const arts = OUTFIT_ART[child.preset];
-  const parentOutfit = (look.gear || []).find(i => i.kind === 'outfit');
-  // наследники никогда не появляются раздетыми: всегда есть повседневный наряд
-  let choices = (arts || []).filter(o => OUTFITS_CLASSIC.includes(o) && (!parentOutfit || o !== parentOutfit.base));
-  if (!choices.length) choices = (arts || []).filter(o => OUTFITS_CLASSIC.includes(o));
-  if (!choices.length) choices = OUTFITS_CLASSIC.filter(o => OUTFITS[o] && !OUTFITS[o].fem && !OUTFIT_SHY[o]);
-  child.gear.push(makeGear('outfit', pick(choices), 0));
-  child.gear.push(makeGear('acc', pick(['flower', 'bow', 'scarf', 'wreath']), 0));
-  syncLook(child);
-  return child;
-}
-function makeHeirLegacy(birth) {
-  const [f, m] = birth.snap;
-  return makeHeir2(f, m);
-}
-
-// ---------- заказы ----------
 function orderChance(c, o) {
   const t = ORDER_TEMPLATES[o.tpl];
   const score = eff(c, t.stat) + 0.5 * eff(c, t.stat2 || t.stat);
@@ -806,22 +674,22 @@ function assignOrder(oid, uid) {
 
 // ---------- события дня ----------
 const EVENTS = [
-  { id: 'fair', w: 1, run() { S.flags.fair = true; return 'Завтра в Медовом Логе базарный день! Спрос на рынке вырастет на 20%.'; } },
+  { id: 'fair', w: 1, run() { S.flags.fair = true; return 'Завтра в Медовом Логе базарный день! Спрос на работников вырастет на 20%.'; } },
   { id: 'tax', w: 1, run() { const t = Math.max(50, Math.round(Math.max(0, S.gold) * 0.05)); S.gold -= t; return `Заглянул сборщик податей с толстой книгой. Пришлось отдать ${fmt(t)} мон.`; } },
   { id: 'scholar', w: 1, need: 1, run() { const c = pick(homeChars()); const v = eff(c, 'int') > 40 ? 4 : 2; c.stats.int = Math.min(c.pot.int, c.stats.int + v); return `Странствующий учёный полдня спорил с ${fn1(c)} о звёздах. Ум +${v} (смышлёные усваивают больше).`; } },
   { id: 'quarrel', w: 1, need: 2, run() { const [a, b] = shuffle(homeChars()); if (mood(a) > 70 && mood(b) > 70) return `${fn1(a)} и ${fn1(b)} чуть не поругались из-за булочки, но в хорошем настроении — рассмеялись и поделили.`; const x = stressGain(a, 15), y = stressGain(b, 15); return `${fn1(a)} и ${fn1(b)} поругались из-за последней булочки. Стресс +${x} и +${y} (Воля смягчает).`; } },
   { id: 'song', w: 1, need: 1, run() { homeChars().forEach(c => c.stress = clamp(c.stress - 10)); return 'Вечером все собрались у камина и пели старые песни. Стресс у всех −10.'; } },
-  { id: 'cold', w: 1, need: 1, run() { const c = pick(homeChars()); if (has(c, 'hardy') || R() < eff(c, 'end') / 120) return `${fn1(c)} промок${g(c, '', 'ла')} под дождём, но крепкое здоровье выручило.`; c.health = clamp(c.health - 20); c.sickDays = 2; return `${fn1(c)} простудил${g(c, 'ся', 'ась')}: здоровье −20, два дня постельного режима. Лекарь или мазь помогут быстрее.`; } },
+  { id: 'cold', w: 1, need: 1, run() { const c = pick(homeChars()); if (has(c, 'hardy') || R() < eff(c, 'end') / 120) return `${fn1(c)} промок${g(c, '', 'ла')} под дождём, но крепкое здоровье выручило.`; c.health = clamp(c.health - 20); c.sickDays = 2; return `${fn1(c)} простудил${g(c, 'ся', 'ась')}: здоровье −20, два дня отлежаться дома. Лекарь или мазь помогут быстрее.`; } },
   { id: 'wallet', w: 1, need: 1, run() { const c = pick(homeChars()); const v = rint(50, 150) + eff(c, 'luk'); if (c.loyalty >= 55) { S.gold += v; c.goodDeed = true; return `${fn1(c)} наш${g(c, 'ёл', 'ла')} на дороге кошелёк и честно принес${g(c, '', 'ла')} вам. +${v} мон.`; } return 'Кто-то в поместье нашёл кошелёк… но вам о нём, кажется, не рассказали (лояльность ниже 55).'; } },
-  { id: 'escape', w: 2, need: 1, cond: () => homeChars().some(c => c.loyalty < 20 && !c.preg), run() { const c = homeChars().filter(c => c.loyalty < 20 && !c.preg)[0]; if (c.discipline > 50 || R() < eff(c, 'wil') / 200) { addFault(c, 'disobey', 'пытал' + g(c, 'ся', 'ась') + ' сбежать ночью'); return `${fn1(c)} собрал${g(c, '', 'а')} узелок и почти ${g(c, 'ушёл', 'ушла')} ночью, но передумал${g(c, '', 'а')} у ворот. Есть повод поговорить.`; } S.owned = S.owned.filter(x => x !== c); return `${c.name} сбежал${g(c, '', 'а')} ночью вместе со всем снаряжением. Низкая лояльность — тревожный знак.`; } },
+  { id: 'escape', w: 2, need: 1, cond: () => homeChars().some(c => c.loyalty < 20), run() { const c = homeChars().filter(c => c.loyalty < 20)[0]; if (c.discipline > 50 || R() < eff(c, 'wil') / 200) { addFault(c, 'disobey', 'собирал' + g(c, 'ся', 'ась') + ' уволиться'); return `${fn1(c)} вечером пришл${g(c, 'ёл', 'а')} с заявлением об уходе, но согласил${g(c, 'ся', 'ась')} подождать и поговорить. Есть повод обсудить условия.`; } for (const it of c.gear) S.stash.push(it); c.gear = []; S.owned = S.owned.filter(x => x !== c); return `${c.name} уволил${g(c, 'ся', 'ась')}: оставил${g(c, '', 'а')} снаряжение в сундуке и ушл${g(c, 'ёл', 'а')} к другому нанимателю. Низкая лояльность — тревожный знак.`; } },
   { id: 'admirer', w: 1, need: 1, run() { const c = pick(homeChars()); c.moodMod += 20; return `${fn1(c)} получил${g(c, '', 'а')} анонимную записку с ромашкой. Настроение +20.`; } },
-  { id: 'rain', w: 1, run() { S.flags.rain = true; return 'Над городом зарядили ливни. Завтра покупателей будет меньше: спрос −15%.'; } },
+  { id: 'rain', w: 1, run() { S.flags.rain = true; return 'Над городом зарядили ливни. Завтра клиентов будет меньше: спрос −15%.'; } },
   { id: 'peddler', w: 1, run() { if (R() < 0.5) { const it = makeGear('acc', pick(Object.keys(ACCESSORIES)), rollQ(0.1)); it.dur = Math.round(it.maxDur * 0.6); S.stash.push(it); return `Бродячий торговец расплатился за ночлег: ${gearName(it)} (в сундуке).`; } const id = pick(Object.keys(ITEMS)); S.inv[id] = (S.inv[id] || 0) + 1; return `Бродячий торговец расплатился за ночлег: ${ITEMS[id].name}.`; } },
   { id: 'guild', w: 1, run() { S.rep += 3; return 'Гильдия купцов отметила вашу лавку в ежемесячном листке. Репутация +3.'; } },
   { id: 'mouse', w: 1, run() { if (S.inv.gingerbread) { S.inv.gingerbread--; if (!S.inv.gingerbread) delete S.inv.gingerbread; return 'В кладовой завелась мышь и утащила медовый пряник.'; } return 'В кладовой завелась мышь, но, не найдя пряников, обиженно ушла.'; } },
   { id: 'thanks', w: 1, need: 1, cond: () => homeChars().some(c => c.loyalty >= 75), run() { const c = homeChars().filter(c => c.loyalty >= 75)[0]; const v = rint(40, 120); S.gold += v; return `${fn1(c)} отложил${g(c, '', 'а')} чаевые с работы и отдал${g(c, '', 'а')} их в общую кассу. +${v} мон.`; } },
   { id: 'stars', w: 1, need: 1, run() { const c = pick(homeChars()); c.pot.luk = clamp(c.pot.luk + 5); return `${fn1(c)} загадал${g(c, '', 'а')} желание на падающую звезду. Потенциал удачи +5.`; } },
-  { id: 'regular', w: 1, need: 1, cond: () => homeChars().some(c => c.task === 'shop'), run() { const c = homeChars().filter(c => c.task === 'shop').sort((a, b) => eff(b, 'cha') - eff(a, 'cha'))[0]; const v = 20 + eff(c, 'cha'); S.gold += v; return `У прилавка ${fn1(c)} появился постоянный покупатель — очарован${g(c, '', '')} обаянием. +${v} мон.`; } },
+  { id: 'regular', w: 1, need: 1, cond: () => homeChars().some(c => c.task === 'shop'), run() { const c = homeChars().filter(c => c.task === 'shop').sort((a, b) => eff(b, 'cha') - eff(a, 'cha'))[0]; const v = 20 + eff(c, 'cha'); S.gold += v; return `У прилавка ${fn1(c)} появился постоянный покупатель — очарован обаянием. +${v} мон.`; } },
   { id: 'tear', w: 1, need: 1, cond: () => S.owned.some(c => c.gear.length), run() { const c = pick(S.owned.filter(c => c.gear.length)); const it = pick(c.gear); it.dur = Math.max(0, it.dur - 10); return `${fn1(c)} зацепил${g(c, 'ся', 'ась')} за гвоздь: «${gearName(it)}» сильно износилось (прочность −10).`; } },
 ];
 function rollEvent() {
@@ -837,7 +705,6 @@ function wearGear(c) {
 
 // ---------- завершение дня ----------
 function endDay() {
-  window._newborn = [];
   const lines = [];
   let income = 0;
   const before = S.gold;
@@ -873,7 +740,7 @@ function endDay() {
     let task = c.task;
     if (c.sickDays > 0) { c.sickDays--; task = 'rest'; lines.push(`${n} болеет и сегодня отдыхает.`); }
     else if (c.health < 30 && task !== 'rest') { task = 'rest'; lines.push(`${n} слишком плохо себя чувствует — сегодня вместо дел отдых.`); }
-    if (task === 'salon') { const so = salonOk(c); if (!so.ok) { task = 'rest'; lines.push(`${n} не пош${g(c, 'ёл', 'ла')} в салон (${so.block || 'нет согласия: охота ' + so.will + ' из ' + SALON_NEED}) — сегодня отдых.`); } }
+    if (task === 'salon') { const so = salonOk(c); if (!so.ok) { task = 'rest'; lines.push(`${n} не вышел${g(c, '', 'а')} в чайную (${so.block || 'не по душе: охота ' + so.will + ' из ' + SALON_NEED}) — сегодня отдых.`); } }
     const failP = failChance(c, task), fail = R() < failP;
     if (task === 'salon') { income += salonWork(c, fail, failP, lines); }
     else if (task === 'craft' || task === 'shop') {
@@ -910,27 +777,20 @@ function endDay() {
     }
     if (c.fatigue >= 90) { c.health = clamp(c.health - 10); lines.push(`! ${n} валится с ног от усталости: здоровье −10.`); }
   }
-  // ежедневные эффекты: снаряжение, сезон, беременность, рост наследников, болезни
+  // ежедневные эффекты: снаряжение, сезон, болезни
   for (const c of S.owned) {
     const b = gb(c);
     if (b.hp) c.health = clamp(c.health + b.hp);
     if (b.calm) c.stress = clamp(c.stress - b.calm);
     if (season().stress) stressGain(c, season().stress);
     if (evNum('sick') && !has(c, 'hardy') && R() < evNum('sick') * (1.5 - c.health / 100)) { c.sickDays = 2; c.health = clamp(c.health - 15); lines.push(`! ${fn1(c)} подхватил${g(c, '', 'а')} хворь: здоровье −15.`); }
-    if (c.growth > 0) {
-      c.growth--;
-      const k = pick(STATS).key; if (c.stats[k] < c.pot[k]) c.stats[k]++;
-    }
-    if (c.preg) {
-      if (!c.crave && R() < 0.35) { c.crave = pick(['pie', 'gingerbread']); lines.push(`${fn1(c)} просит ${c.crave === 'pie' ? 'ягодного пирога' : 'медового пряника'} — без него настроение хуже.`); }
-    }
   }
   // содержание (проценты по долгу не списываются из кассы, а прибавляются к долгу)
   const up = upkeep();
   const cash = up.total - up.interest;
   if (cash) { S.gold -= cash; income -= cash; }
   if (cash || up.interest)
-    lines.push(`Содержание: еда ${up.food}, жильё ${up.house}${up.heat ? `, дрова ${up.heat}` : ''} — итого −${cash} мон.${up.interest ? ` Проценты по долгу: +${up.interest} к долгу.` : ''}`);
+    lines.push(`Расходы: жалованье ${up.wage || 0}, стол ${up.food}, жильё ${up.house}${up.heat ? `, дрова ${up.heat}` : ''} — итого −${cash} мон.${up.interest ? ` Проценты по долгу: +${up.interest} к долгу.` : ''}`);
   S.debt += up.interest;
   // настроение и лояльность
   for (const c of S.owned) {
@@ -939,27 +799,9 @@ function endDay() {
     if (m >= 70) loyaltyGain(c, 1); else if (m < 35) loyaltyGain(c, -2);
     if (c.stress > 80) loyaltyGain(c, -1);
     c.discipline = clamp(c.discipline - 2);
-    if ((c.aff || 0) > 30 && (!c.touch || c.touch.day !== S.day) && c.closeDay !== S.day) c.aff = clamp(c.aff - 1);
+    if ((c.aff || 0) > 30 && c.talkDay !== S.day) c.aff = clamp(c.aff - 1);
   }
   rollFaults(lines);
-  heatEndDay(lines);
-  // рождения
-  for (const c of S.owned.slice()) {
-    if (c.preg && c.preg.due <= S.day + 1) {
-      const child = makeHeir2(c, c.preg.father);
-      const fatherName = c.preg.father.uid === 'player' ? 'вас' : c.preg.father.anon ? 'неизвестного гостя салона' : c.preg.father.name.split(' ')[0];
-      c.preg = null; c.crave = null; c.moodMod += 20; loyaltyGain(c, 5);
-      S.owned.push(child);
-      lines.push(`★ Феи Приюта Ростков сдержали слово: в поместье пришл${g(child, 'ёл', 'а')} ${child.name} — взросл${g(child, 'ый наследник', 'ая наследница')} ${fn1(c)} и ${fatherName}. Похож${g(child, '', 'а')} на ${child.look === 'mother' ? 'мать' : 'отца'}.${child.mix ? ` Кровь отца — ${RACES[child.mix].name.toLowerCase()}: бонус к потенциалу.` : ''}`);
-      if (S.owned.length > S.capacity) lines.push('! В поместье тесно: мест больше, чем положено. Расширьте дом или продайте кого-то.');
-    }
-  }
-  for (const b of S.births.filter(b => b.due <= S.day + 1)) {
-    const child = makeHeirLegacy(b);
-    S.owned.push(child);
-    lines.push(`★ Из Приюта Ростков пришл${g(child, 'ёл', 'а')} ${child.name} — взросл${g(child, 'ый наследник', 'ая наследница')} ${b.snap[0].name.split(' ')[0]} и ${b.snap[1].name.split(' ')[0]}.`);
-  }
-  S.births = S.births.filter(b => b.due > S.day + 1);
   // событие
   let ev = null;
   if (R() < 0.7) { const e = rollEvent(); if (e) ev = e.run(); }
@@ -979,7 +821,6 @@ function endDay() {
   else if (!S.mevent && R() < 0.13) { S.nextEv = { id: pick(Object.keys(MARKET_EVENTS)), in: rint(2, 3) }; }
   tickEconomy(); rollMarket(); topUpOrders(); rollGearShop(); S.refreshN = 0;
   makeNews();
-  heatStartLines(lines);
   S.hist.push({ d: S.day - 1, inc: income, gold: S.gold, debt: S.debt, n: S.owned.length });
   S.hist = S.hist.slice(-60);
   addLog(`День ${S.day - 1}: итог ${income >= 0 ? '+' : ''}${fmt(income)} мон.`);
@@ -996,12 +837,12 @@ function endDay() {
      ${ev ? `<div class="event-box"><div class="event-title">Событие</div>${esc(ev)}</div>` : ''}
      ${evMsg ? `<div class="event-box ev-market"><div class="event-title">Город</div>${esc(evMsg)}</div>` : ''}
      ${(S.news || []).length ? `<details class="event-box ev-news"><summary class="event-title">Новости города (${S.news.length})</summary><ul class="news-l">${S.news.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}
-     <p class="muted">На рынке ${S.market.length} ${plural(S.market.length, 'предложение', 'предложения', 'предложений')}${S.visitor ? ' — и необычный гость!' : '.'}</p>`,
+     <p class="muted">На бирже найма ${S.market.length} ${plural(S.market.length, 'соискатель', 'соискателя', 'соискателей')}${S.visitor ? ' — и необычный гость!' : '.'}</p>`,
     [{ label: 'Новый день!', cls: 'btn-primary', act: 'close' }]);
   }
 }
 
-// ---------- реакции (прикосновения — в care.js) ----------
+// ---------- реакции ----------
 let reactTimer = null;
 function react(c, expr, line, ms) { setTimeout(() => reactNow(c, expr, line, ms), 0); }
 function reactNow(c, expr, line, ms) {
@@ -1065,12 +906,11 @@ function goldTo(v) {
 function bar(label, v, cls, title) {
   return `<div class="mbar ${cls || ''}" title="${esc(title || '')}"><span class="mbar-l">${label}</span><span class="mbar-t"><i style="width:${clamp(v)}%"></i></span><span class="mbar-v">${Math.round(v)}</span></div>`;
 }
-const TASKS = { craft: 'Ремесло', shop: 'Торговля', salon: 'Салон', train: 'Учёба', rest: 'Отдых' };
+const TASKS = { craft: 'Ремесло', shop: 'Торговля', salon: 'Чайная', train: 'Учёба', rest: 'Отдых' };
 const sg = (v) => (v >= 0 ? '+' : '−') + Math.abs(Math.round(v));
 
 function charBadges(c) {
   let s = '';
-  if (c.preg) s += `<span class="badge b-preg" title="Беременность">в положении · ${dn(Math.max(0, c.preg.due - S.day))}</span>`;
   if (c.growth > 0) s += `<span class="badge b-grow" title="Учится почти вдвое быстрее">юный дар · ${dn(c.growth)}</span>`;
   if (c.sickDays > 0) s += `<span class="badge b-sick">болеет</span>`;
   if (c.crave) s += `<span class="badge b-crave">хочет ${c.crave === 'pie' ? 'пирога' : 'пряника'}</span>`;
@@ -1093,28 +933,28 @@ function viewManor() {
       <div class="row-portrait">${renderPortrait(c, 'sm')}</div>
       <div class="row-body">
         <div class="row-name">${esc(fn1(c))} <span class="chip chip-r">${rarityName(c)}</span>${charBadges(c)}${busy ? '' : autoToggleHtml(c)}</div>
-        <div class="row-sub">${raceName(c)} · ${esc(c.title)} · настроение ${mood(c)}</div>
+        <div class="row-sub">${raceName(c)} · ${esc(c.title)} · настроение ${mood(c)}${typeof wageChip === 'function' ? wageChip(c) : ''}</div>
         ${bar('Лояльн.', c.loyalty, 'b-loy')}${bar('Устал.', c.fatigue, 'b-fat')}
         ${busy && o ? `<div class="busy">На заказе: «${esc(ORDER_TEMPLATES[o.tpl].title)}», ещё ${dn(o.daysLeft)}.</div>` :
         `<div class="seg" data-stop>${Object.entries(TASKS).map(([k, n]) => `<button class="seg-b ${c.task === k ? 'on' : ''}" data-task="${k}" data-uid="${c.uid}">${n}</button>`).join('')}</div>
-         <div class="row-fc">${isAuto(c) && c.autoWhy ? `<span class="auto-why">⚙ ${esc(c.autoWhy)}</span><br>` : ''}${inf ? `Завтра ≈ <b>+${inf.v}</b> мон. · ошибка ${Math.round(failChance(c) * 100)}%${c.task === 'salon' ? ` · риск ${Math.round(salonRisk(c).p * 100)}%` : ''}${hasFault(c) ? ' · <span class="neg">провинил' + g(c, 'ся', 'ась') + '</span>' : ''}${inHeat(c) ? ' · <span class="heat-t">течка</span>' : ''}` : c.task === 'train' ? `Учёба: «${statName(c.trainStat)}» ×${trainInfo(c).mult.toFixed(2)} · −${TRAIN_COST} мон.` : 'Отдых: усталость и стресс снизятся'}</div>`}
+         <div class="row-fc">${isAuto(c) && c.autoWhy ? `<span class="auto-why">⚙ ${esc(c.autoWhy)}</span><br>` : ''}${inf ? `Завтра ≈ <b>+${inf.v}</b> мон. · ошибка ${Math.round(failChance(c) * 100)}%${c.task === 'salon' ? ` · риск ${Math.round(salonRisk(c).p * 100)}%` : ''}${hasFault(c) ? ' · <span class="neg">есть промах</span>' : ''}` : c.task === 'train' ? `Учёба: «${statName(c.trainStat)}» ×${trainInfo(c).mult.toFixed(2)} · −${TRAIN_COST} мон.` : 'Отдых: усталость и стресс снизятся'}</div>`}
       </div></div>`;
   }).join('');
   const next = EXPAND.find(x => x.cap > S.capacity);
-  const legacy = S.births.map(b => `<div class="note">Наследник ${esc(b.snap[0].name.split(' ')[0])} и ${esc(b.snap[1].name.split(' ')[0])} придёт на ${b.due} день.</div>`).join('');
-  return `<div class="screen-head"><h1>Поместье</h1>
+  const legacy = typeof staffGoalsHtml === 'function' ? staffGoalsHtml() : '';
+  return `<div class="screen-head"><h1>Хозяйство</h1>
       <div class="sub">Мест: ${S.owned.length}/${S.capacity} · ${season().name}, до смены ${dn(seasonLeft())}${S.mevent ? ' · ' + mev().name : ''}</div>
       <div class="head-tools">${autoAllHtml()}<button class="btn tiny" data-plan>План дня</button><button class="btn tiny" data-news>Новости · ${(S.news || []).length}</button><button class="btn tiny" data-help="work">Справка</button></div></div>
     <div class="panel parchment upkeep">
       <div class="panel-title">Расходы на завтра: −${up.total - up.interest} мон.</div>
-      <div class="small">Еда ${up.food} · жильё ${up.house}${up.heat ? ` · дрова ${up.heat}` : ''}${up.interest ? ` · <span class="neg">проценты ${up.interest} (к долгу)</span>` : ''}</div>
-      <div class="small muted">Еда дороже ${season().food && season().food < 1 ? 'не сейчас — осенью дешевле' : evNum('food', 1) > 1 ? 'сейчас: ' + mev().name.toLowerCase() : 'для гномов и в положении'}. Жильё растёт с числом жильцов.</div>
+      <div class="small">Жалованье ${up.wage || 0} · стол ${up.food} · жильё ${up.house}${up.heat ? ` · дрова ${up.heat}` : ''}${up.interest ? ` · <span class="neg">проценты ${up.interest} (к долгу)</span>` : ''}</div>
+      <div class="small muted">Жалованье платится каждый вечер — без него работники грустят и могут уволиться. Стол дороже ${season().food && season().food < 1 ? 'не сейчас — осенью дешевле' : evNum('food', 1) > 1 ? 'сейчас: ' + mev().name.toLowerCase() : 'для гномов'}. Жильё растёт с числом работников.</div>
       ${sparkline()}
-      ${next ? `<button class="btn small-btn" data-expand ${rankIdx() < next.rank ? 'disabled' : ''}>Пристроить флигель: ${next.cap} мест · ${fmt(next.cost)} мон.${rankIdx() < next.rank ? ` (нужен ранг ${RANKS[next.rank].key})` : ''}</button>` : ''}
+      ${next ? `<button class="btn small-btn" data-expand ${rankIdx() < next.rank ? 'disabled' : ''}>Пристроить работницкий флигель: ${next.cap} мест · ${fmt(next.cost)} мон.${rankIdx() < next.rank ? ` (нужен ранг ${RANKS[next.rank].key})` : ''}</button>` : ''}
     </div>
     ${legacy}
-    ${rows || `<div class="empty parchment">В поместье тихо и пусто. Загляните на рынок — сегодня там ${S.market.length} ${plural(S.market.length, 'предложение', 'предложения', 'предложений')}.</div>`}
-    <div class="log parchment"><div class="panel-title">Дневник торговца</div>${S.log.slice(0, 8).map(l => `<div class="log-l"><b>д.${l.day}</b> ${esc(l.t)}</div>`).join('')}</div>`;
+    ${rows || `<div class="empty parchment">В хозяйстве тихо и пусто. Загляните на биржу найма — сегодня там ${S.market.length} ${plural(S.market.length, 'соискатель', 'соискателя', 'соискателей')}.</div>`}
+    <div class="log parchment"><div class="panel-title">Дневник управляющего</div>${S.log.slice(0, 8).map(l => `<div class="log-l"><b>д.${l.day}</b> ${esc(l.t)}</div>`).join('')}</div>`;
 }
 
 function viewMarket() {
@@ -1122,32 +962,32 @@ function viewMarket() {
   const dem = Object.keys(RACES).map(k => { const v = E.race[k], t = E.trend[k]; return `<span class="chip ${v >= 1.1 ? 'chip-up' : v <= 0.9 ? 'chip-down' : ''}" title="Тренд ${t > 0 ? 'вверх' : 'вниз'}">${RACES[k].plural} ×${v.toFixed(2)} ${t > 0.01 ? '↑' : t < -0.01 ? '↓' : '→'}</span>`; }).join('');
   const list = S.market.filter(c => UI.filter === 'all' || c.g === UI.filter);
   const cards = list.map(c => `<div class="m-card rarity-${RARITIES[c.rarity].key} ${c.bargain ? 'bargain' : ''} ${c.exotic ? 'exotic' : ''}" data-open="${c.uid}" data-from="market">
-      <div class="m-portrait">${renderPortrait(c, 'sm')}<span class="m-rar">${rarityName(c)}</span>${c.bargain ? '<span class="m-tag">−40%</span>' : c.exotic ? '<span class="m-tag">купец</span>' : ''}</div>
+      <div class="m-portrait">${renderPortrait(c, 'sm')}<span class="m-rar">${rarityName(c)}</span>${c.bargain ? '<span class="m-tag">−40%</span>' : c.exotic ? '<span class="m-tag">издалека</span>' : ''}</div>
       <div class="m-name">${esc(fn1(c))} <span class="m-g">${c.g === 'f' ? '♀' : '♂'}</span></div>
       <div class="m-title">${raceName(c)}</div>
-      <div class="m-price"><span class="coin"></span>${fmt(price(c))}</div>
+      <div class="m-price" title="Подъёмные при найме"><span class="coin"></span>${fmt(price(c))}<small class="m-wage">${typeof wageOf === 'function' ? wageOf(c) + '/день' : ''}</small></div>
     </div>`).join('');
-  const vis = S.visitor ? `<div class="visitor parchment">${{ merchant: '<b>Заморский купец</b> привёз редких людей — они в начале списка.', appraiser: '<b>Странствующий оценщик</b> сегодня бесплатно раскрыл потенциал у всех на рынке.', bargain: '<b>Распродажа!</b> Один из продавцов торопится и отдаёт товар на 40% дешевле.' }[S.visitor.kind]}</div>` : '';
+  const vis = S.visitor ? `<div class="visitor parchment">${{ merchant: '<b>Артель из дальних краёв</b> ищет работу — редкие мастера в начале списка.', appraiser: '<b>Писарь гильдии</b> сегодня бесплатно показал рекомендации всех соискателей.', bargain: '<b>Срочный найм!</b> Один соискатель спешит устроиться и согласен на подъёмные на 40% ниже.' }[S.visitor.kind]}</div>` : '';
   const f = (k, n) => `<button class="fchip ${UI.filter === k ? 'on' : ''}" data-filter="${k}">${n}</button>`;
   return `<div class="bunting" aria-hidden="true">${Array.from({ length: 11 }, (_, i) => `<i style="--i:${i}"></i>`).join('')}<b class="lantern l1"></b><b class="lantern l2"></b></div><div class="screen-head market-head"><div class="keeper">${renderPortrait({ preset: 'm08', acc: [{ id: 'hat', color: '#4f6b3a' }] }, 'sm')}</div>
-    <div><h1>Рынок</h1><div class="sub">${S.market.length} ${plural(S.market.length, 'предложение', 'предложения', 'предложений')} (больше с рангом гильдии). Спрос:</div><div class="chips">${dem}</div>
-    <div class="small muted">Модно: «${TRAITS[E.hot].name}» +15% к цене · ${season().name}${season().dem ? ' +' + Math.round(season().dem * 100) + '% спроса' : ''}${S.mevent ? ' · ' + mev().name : ''}</div></div></div>
+    <div><h1>Биржа найма</h1><div class="sub">${S.market.length} ${plural(S.market.length, 'соискатель', 'соискателя', 'соискателей')} ищут работу (больше с рангом гильдии). Спрос на работников:</div><div class="chips">${dem}</div>
+    <div class="small muted">Ценится: «${TRAITS[E.hot].name}» +15% к ценности · ${season().name}${season().dem ? ' +' + Math.round(season().dem * 100) + '% спроса' : ''}${S.mevent ? ' · ' + mev().name : ''}</div></div></div>
     ${vis}
-    <div class="m-tools">${f('all', 'Все')}${f('f', 'Женщины')}${f('m', 'Мужчины')}<button class="btn small-btn" data-refresh>Новый привоз · ${refreshCost()}</button></div>
-    <div class="m-grid">${cards || '<div class="empty parchment">Сегодня всё раскупили. Завтра будет новый привоз.</div>'}</div>`;
+    <div class="m-tools">${f('all', 'Все')}${f('f', 'Женщины')}${f('m', 'Мужчины')}<button class="btn small-btn" data-refresh>Дать объявление · ${refreshCost()}</button></div>
+    <div class="m-grid">${cards || '<div class="empty parchment">Сегодня все соискатели уже нашли работу. Завтра придут новые.</div>'}</div>`;
 }
 
 // «влияет на:» — что делает каждый показатель прямо сейчас
 function effLines(c) {
   const m = mood(c);
   return {
-    loy: `влияет на: цену ${xf(loyF(c))}, честность в событиях${c.loyalty < 20 ? ', <b class="neg">может сбежать</b>' : ''}${c.loyalty < 30 ? ', ошибки в работе' : ''}`,
-    mood: `влияет на: доход ${xf(moodF(c))}, учёбу ×${(0.8 + 0.4 * m / 100).toFixed(2)}, заказы ${sg((m - 50) / 4)}%, цену (вид)`,
+    loy: `влияет на: ценность ${xf(loyF(c))}, честность в событиях${c.loyalty < 20 ? ', <b class="neg">может уволиться</b>' : ''}${c.loyalty < 30 ? ', ошибки в работе' : ''}`,
+    mood: `влияет на: доход ${xf(moodF(c))}, учёбу ×${(0.8 + 0.4 * m / 100).toFixed(2)}, заказы ${sg((m - 50) / 4)}%, ценность`,
     str: `влияет на: ошибки ${pp(failPart(c, 'str'))}, ${c.stress > 70 ? 'учёбу ×0.70, заказы −8%, ' : ''}лояльность${c.stress > 80 ? ' <b class="neg">падает</b>' : ''}`,
     fat: `влияет на: доход ${xf(fatF(c))}, ошибки ${pp(failPart(c, 'fat'))}, заказы −${Math.round(c.fatigue / 3)}%${c.fatigue >= 90 ? ', <b class="neg">здоровье −10/день</b>' : ''}`,
-    hp: `влияет на: доход ${xf(hpF(c))}, цену ${xf(0.6 + 0.4 * c.health / 100)}${c.health < 50 ? ', ошибки +6%' : ''}${c.health < 30 ? ', <b class="neg">не может работать</b>' : ''}`,
-    dis: `влияет на: ошибки ${pp(failPart(c, 'dis'))}, побеги`,
-    aff: `влияет на: согласие на близость, как принимает прикосновения (доверие ${trustOf(c)})`,
+    hp: `влияет на: доход ${xf(hpF(c))}, ценность ${xf(0.6 + 0.4 * c.health / 100)}${c.health < 50 ? ', ошибки +6%' : ''}${c.health < 30 ? ', <b class="neg">не может работать</b>' : ''}`,
+    dis: `влияет на: ошибки ${pp(failPart(c, 'dis'))}`,
+    aff: `влияет на: охоту к трудным поручениям, как воспринимает советы`,
   };
 }
 function stateHtml(c) {
@@ -1160,9 +1000,9 @@ function stateHtml(c) {
       ${row(bar('Стресс', c.stress, 'b-str'), E.str)}
       ${row(bar('Усталость', c.fatigue, 'b-fat'), E.fat)}
       ${row(bar('Здоровье', c.health, 'b-hp'), E.hp)}
-      ${row(bar('Дисциплина', c.discipline, 'b-dis'), E.dis)}
-      ${row(bar('Симпатия', c.aff || 0, 'b-aff', 'Как вы нравитесь лично'), E.aff)}
-      <div class="muted small">Настроение: <b>${moodName(m)}</b>. ${c.loyalty >= 75 ? 'Предан' + g(c, '', 'а') + ' вам всей душой.' : c.loyalty < 20 ? 'Может сбежать, если так пойдёт и дальше.' : ''}${c.crave ? ` Просит ${c.crave === 'pie' ? 'ягодного пирога' : 'медового пряника'} (настроение −8, пока не получит).` : ''}</div>
+      ${row(bar('Собранность', c.discipline, 'b-dis'), E.dis)}
+      ${row(bar('Доверие', c.aff || 0, 'b-aff', 'Насколько доверяет вам как управляющему'), E.aff)}
+      <div class="muted small">Настроение: <b>${moodName(m)}</b>. ${c.loyalty >= 75 ? 'Дорожит местом и командой.' : c.loyalty < 20 ? 'Подумывает уволиться, если так пойдёт и дальше.' : ''}</div>
     </div>`;
 }
 function refreshCardStats(c) {
@@ -1179,14 +1019,12 @@ function forecastHtml(c) {
     <div class="fc-grid">
       <div class="fc ${c.task === 'craft' ? 'on' : ''}"><b>Ремесло</b><span>+${cr.v}</span><small>Мастерство, Сила, Выносливость</small></div>
       <div class="fc ${c.task === 'shop' ? 'on' : ''}"><b>Торговля</b><span>+${sh.v}</span><small>Обаяние, Ум, Удача</small></div>
-      <div class="fc ${c.task === 'salon' ? 'on' : ''} ${so.ok ? '' : 'off'}"><b>Салон</b><span>${so.ok ? '+' + sl.v : '—'}</span><small>${so.block ? esc(so.block) : so.ok ? 'Обаяние, красота, молодость' : 'нет согласия (' + so.will + '/' + SALON_NEED + ')'}</small></div>
+      <div class="fc ${c.task === 'salon' ? 'on' : ''} ${so.ok ? '' : 'off'}"><b>Чайная</b><span>${so.ok ? '+' + sl.v : '—'}</span><small>${so.block ? esc(so.block) : so.ok ? 'Обаяние, Мастерство, Ум' : 'не по душе (' + so.will + '/' + SALON_NEED + ')'}</small></div>
       <div class="fc ${c.task === 'train' ? 'on' : ''}"><b>Учёба</b><span>×${tr.mult.toFixed(2)}</span><small>−${TRAIN_COST} мон., «${statName(c.trainStat)}»</small></div>
     </div>
     ${cur ? `<div class="small">База ${Math.round(cur.base)} × множители:</div><div class="mchips">${partsHtml(cur.parts)}</div>` : c.task === 'train' ? `<div class="mchips">${partsHtml(tr.parts)}</div>` : '<div class="small muted">Отдых: усталость −35, стресс −20, здоровье +10.</div>'}
     ${c.task !== 'rest' ? (() => { const fi = failInfo(c); const top = failTop(fi, 3); return `<div class="small">Шанс ${c.task === 'train' ? 'сорвать урок' : 'ошибки (' + JOB_DIFF[fi.task].bad + ')'}: <b class="${fi.p >= 0.15 ? 'neg' : fi.p <= 0.06 ? 'pos' : ''}">${Math.round(fi.p * 100)}%</b> <button class="q-btn" data-help="work">?</button>${top.length ? `<div class="small muted">Больше всего мешает: ${top.map(x => x[0].toLowerCase() + ' ' + pp(x[1])).join(', ')}</div>` : '<div class="small muted">Условия отличные.</div>'}</div>${failWhy(c)}`; })() : ''}
-    ${c.task === 'salon' || c.prof ? `<div class="small">Профессионализм: <b>${profOf(c)}</b>/100 · охота ${so.will} (порог ${SALON_NEED}, охотно ${SALON_EAGER}) · риск здоровью ${Math.round(salonRisk(c).p * 100)}% <button class="q-btn" data-help="salon">?</button></div>${salonWhy(c)}` : ''}
-    ${inHeat(c) ? `<div class="small heat-t">Течка ещё ${dn(heatInfo(c).left)}: доход ×0.8, ошибки +3%, нужно внимание.</div>` : ''}
-    ${c.preg ? '<div class="small neg">В положении: доход ×0.5, заказы недоступны.</div>' : ''}
+    ${c.task === 'salon' || c.prof ? `<div class="small">Опыт в чайной: <b>${profOf(c)}</b>/100 · охота ${so.will} (порог ${SALON_NEED}, охотно ${SALON_EAGER}) · риск переутомиться ${Math.round(salonRisk(c).p * 100)}% <button class="q-btn" data-help="salon">?</button></div>${salonWhy(c)}` : ''}
   </div>`;
 }
 function gearHtml(c, owned) {
@@ -1204,7 +1042,7 @@ function gearHtml(c, owned) {
   return `<div class="panel parchment"><div class="panel-title">Снаряжение</div>
     ${rows || '<div class="muted small">Ничего не надето.</div>'}
     ${sum ? `<div class="small">Итого: <b>${esc(sum)}</b></div>` : ''}
-    <div class="small muted">${owned ? 'Прочность падает на 1 за каждый рабочий день и день заказа.' : `Снаряжение входит в цену (≈${fmt(gearWorth(c) * 0.8)} мон.).`}</div>
+    <div class="small muted">${owned ? 'Прочность падает на 1 за каждый рабочий день и день заказа.' : `Своё снаряжение соискатель принесёт с собой (≈${fmt(gearWorth(c) * 0.8)} мон.).`}</div>
     ${owned ? `<button class="btn" data-wearfrom="${c.uid}" ${S.stash.length ? '' : 'disabled'}>Надеть из сундука (${S.stash.length})</button>` : ''}
   </div>`;
 }
@@ -1217,81 +1055,50 @@ function viewCard() {
     const inh = c.inherited && c.inherited.includes(s.key);
     return `<div class="stat ${owned && c.trainStat === s.key ? 'training' : ''}" ${owned ? `data-trainstat="${s.key}" data-uid="${c.uid}"` : ''} title="${esc(STAT_EFF[s.key])}">
       <span class="stat-ico"><svg><use href="#i-${s.key}"/></svg></span>
-      <div class="stat-body"><div class="stat-n">${s.name}${inh ? ' <span class="inh" title="Унаследовано">★</span>' : ''}<small>${STAT_EFF[s.key]}</small></div>
+      <div class="stat-body"><div class="stat-n">${s.name}${inh ? ' <span class="inh" title="Семейный талант">★</span>' : ''}<small>${STAT_EFF[s.key]}</small></div>
       <div class="stat-bar"><i style="width:${v}%"></i>${bv ? `<i class="sb-gear" style="left:${v}%;width:${Math.min(bv, 100 - v)}%"></i>` : ''}${c.appraised ? `<b class="pot" style="left:${pv}%"></b>` : ''}</div></div>
       <span class="stat-v">${v}${bv ? `<em>+${bv}</em>` : ''}${c.appraised ? `<small>/${pv}</small>` : ''}</span></div>`;
   }).join('');
-  const breed = c.g === 'f'
-    ? `${bar('Плодовитость', c.breed.fert, 'b-br')}${bar('Матер. стать', c.breed.mat, 'b-br')}<div class="eff">влияет на: шанс беременности, качество наследства</div>`
-    : `${bar('Сила рода', c.breed.line, 'b-br')}${bar('Наследств.', c.breed.her, 'b-br')}<div class="eff">влияет на: шанс беременности, передачу лучших навыков</div>`;
-  const traits = c.traits.map(t => `<span class="chip chip-t ${S.econ.hot === t ? 'hot' : ''}" title="${TRAITS[t].desc}">${TRAITS[t].name}${S.econ.hot === t ? ' 🔥' : ''}<small>${TRAITS[t].desc}; цена ×${TRAITS[t].mult}</small></span>`).join('');
+  const traits = c.traits.map(t => `<span class="chip chip-t ${S.econ.hot === t ? 'hot' : ''}" title="${TRAITS[t].desc}">${TRAITS[t].name}${S.econ.hot === t ? ' 🔥' : ''}<small>${TRAITS[t].desc}; ценность ×${TRAITS[t].mult}</small></span>`).join('');
   const r = RACES[c.race];
   const busy = c.status === 'order';
   const pp = priceParts(c);
   const priceBox = `<div class="mchips">${pp.map(([n, v], i) => i === 0 ? `<span class="mchip">${n} ${v}</span>` : `<span class="mchip ${v > 1.001 ? 'up' : v < 0.999 ? 'down' : ''}">${n} ${xf(v)}</span>`).join('')}${gearWorth(c) ? `<span class="mchip up">+снаряжение ${fmt(gearWorth(c) * 0.8)}</span>` : ''}</div>`;
   let actions = '';
   if (!owned) {
-    actions = `<div class="price-box parchment"><div>Цена: <b><span class="coin"></span>${fmt(price(c))}</b>${c.discount ? ` <span class="pos">(скидка ${Math.round(c.discount * 100)}%)</span>` : ''}${c.priceAdj > 1 ? ' <span class="neg">(продавец обижен: +10%)</span>' : ''}</div>
+    actions = `<div class="price-box parchment"><div>Подъёмные при найме: <b><span class="coin"></span>${fmt(price(c))}</b>${c.discount ? ` <span class="pos">(скидка ${Math.round(c.discount * 100)}%)</span>` : ''}${c.priceAdj > 1 ? ' <span class="neg">(соискатель обижен: +10%)</span>' : ''}</div>
+      ${typeof hireTermsHtml === 'function' ? hireTermsHtml(c) : ''}
       ${priceBox}
       <div class="btn-row">
-        <button class="btn btn-primary" data-buy="${c.uid}">Купить</button>
-        <button class="btn" data-haggle="${c.uid}" ${c.haggleLock ? 'disabled' : ''}>${c.haggleLock ? 'Продавец обижен' : 'Торговаться'}</button>
-        ${c.appraised ? '' : `<button class="btn" data-appraise="${c.uid}">Оценщик (${S.appraiseCost})</button>`}
+        <button class="btn btn-primary" data-buy="${c.uid}">Нанять</button>
+        <button class="btn" data-haggle="${c.uid}" ${c.haggleLock ? 'disabled' : ''}>${c.haggleLock ? 'Соискатель обижен' : 'Обсудить условия'}</button>
+        ${c.appraised ? '' : `<button class="btn" data-appraise="${c.uid}">Рекомендации (${S.appraiseCost})</button>`}
       </div></div>`;
   } else {
-    const ci = closeInfo(c), hi = heatInfo(c);
     actions = `
       <div class="panel parchment"><div class="panel-title">Распорядок на завтра</div>
         ${busy ? `<div class="busy">Сейчас на заказе — распорядок недоступен.</div>` :
         `<div class="auto-row">${autoToggleHtml(c)}<span class="small muted">${isAuto(c) ? (c.autoWhy ? '⚙ ' + esc(c.autoWhy) : 'дело выбирается само') : 'вручную'}</span></div>
         <div class="seg big">${Object.entries(TASKS).map(([k, n]) => `<button class="seg-b ${c.task === k ? 'on' : ''} ${k === 'salon' && !salonOk(c).ok ? 'off' : ''}" data-task="${k}" data-uid="${c.uid}">${n}</button>`).join('')}</div>
-        <div class="muted small">${{ salon: 'Салон: вечер с гостями — беседы, музыка, вино; остальное за закрытыми дверями. Доход по Обаянию, красоте, молодости и профессионализму. Риск для здоровья, усталость +16, стресс +12.', craft: 'Ремесло: монеты по Мастерству, Силе и Выносливости. Усталость +18, стресс +10.', shop: 'Торговля за прилавком: монеты по Обаянию, Уму и Удаче. Усталость +14, стресс +12.', train: `Учит навык «${statName(c.trainStat)}» (нажмите на навык выше, чтобы сменить). ${TRAIN_COST} мон./день, усталость +15.`, rest: 'Усталость и стресс снижаются, здоровье восстанавливается.' }[c.task]}</div>`}
+        <div class="muted small">${{ salon: 'Чайная: принимать гостей — заваривать чай, подавать пироги, вести беседу и музыку. Доход по Обаянию, Мастерству и опыту. Усталость +16, стресс +12.', craft: 'Ремесло: монеты по Мастерству, Силе и Выносливости. Усталость +18, стресс +10.', shop: 'Торговля за прилавком: монеты по Обаянию, Уму и Удаче. Усталость +14, стресс +12.', train: `Учит навык «${statName(c.trainStat)}» (нажмите на навык выше, чтобы сменить). ${TRAIN_COST} мон./день, усталость +15.`, rest: 'Усталость и стресс снижаются, здоровье восстанавливается.' }[c.task] || ''}</div>`}
       </div>
       ${forecastHtml(c)}
-      <div class="panel parchment"><div class="panel-title">Прикосновения <span class="muted small">доверие ${trustOf(c)}</span></div>
-        ${touchChipsHtml(c)}
-        <div class="small muted">Касайтесь прямо рисунка или кнопок. Каждая зона действует по-своему и за день слабеет.</div>
-        ${hi && hi.on ? `<div class="note heat-note">♥ Течка ещё ${dn(hi.left)}. ${c.heatCare === S.day ? 'Сегодня внимание уже было — ей спокойнее.' : 'Сегодня без внимания: к вечеру стресс +8. Погладьте, похвалите или подарите что-нибудь.'} <a href="#" data-help="heat">Подробнее</a></div>` : hi ? `<div class="small muted">Следующая течка через ${dn(hi.next)}.</div>` : ''}
-        <button class="btn btn-close ${ci.ok ? '' : 'soft'}" data-closeness="${c.uid}">Сблизиться<small>${c.closeDay === S.day ? 'уже сегодня — завтра снова' : ci.ok ? 'согласие есть · мини-игра' : 'пока откажет: ' + ci.reqs.filter(r => r[1] < r[2]).map(r => r[0].toLowerCase() + ' ' + r[1] + '/' + r[2]).concat(ci.why).join(', ')}</small></button>
-      </div>
-      <div class="panel parchment"><div class="panel-title">Забота и строгость</div>
-        <div class="act-grid">
-          <button class="btn act-good" data-act="praise" data-uid="${c.uid}" ${c.praisedDay !== S.day ? '' : 'disabled'}>Похвалить<small>${c.goodDeed ? 'есть за что: лояльность +5' : 'лояльность +2'}</small></button>
-          <button class="btn act-good" data-act="gift" data-uid="${c.uid}">Подарок · 60<small>лояльность +6, настроение +15</small></button>
-          <button class="btn act-good" data-act="healer" data-uid="${c.uid}">Лекарь · ${HEALER_COST}<small>здоровье +40, лечит хворь</small></button>
-          <button class="btn act-bad" data-act="scold" data-uid="${c.uid}">Выговор<small>${hasFault(c) ? 'по делу: дисциплина +20' : 'без повода: лояльность −8'}</small></button>
-          <button class="btn act-bad" data-act="nosweets" data-uid="${c.uid}">Без десерта<small>дисциплина +8, настроение −12</small></button>
-        </div>
-        ${deserveHtml(c)}
-        <div class="btn-row"><button class="btn" data-useitem-for="${c.uid}">Дать предмет</button>
-        <button class="btn btn-mate" data-mate="${c.uid}" ${busy ? 'disabled' : ''}>Спарить${c.g === 'f' && c.mateDay === S.day ? ' (завтра)' : ''}</button>
-        ${c.appraised ? '' : `<button class="btn" data-appraise="${c.uid}">Оценщик (${S.appraiseCost})</button>`}</div>
-      </div>
-      ${punishPanelHtml(c)}
-      <div class="panel parchment"><div class="panel-title">Сделки</div>
-        <div class="small">Скупщик даст ≈ <b>${fmt(sellPrice(c))}</b> мон. (рынок берёт 10%${evNum('sell') ? `, караван +${Math.round(evNum('sell') * 100)}%` : ''}). ${c.boughtFor ? `Куплен${g(c, '', 'а')} за ${fmt(c.boughtFor)}.` : ''}</div>
-        ${priceBox}
-        <div class="small muted">Цену поднимают навыки (учёба), лояльность, здоровье и настроение, наряд и украшения, спрос на расу.</div>
-        <div class="btn-row">
-          <button class="btn" data-sell="${c.uid}" ${busy || c.preg || c.sellLockDay === S.day ? 'disabled' : ''}>${c.sellLockDay === S.day ? 'Покупатель ушёл' : 'Продать'}</button>
-          <button class="btn act-good" data-free="${c.uid}" ${busy ? 'disabled' : ''}>Отпустить на волю</button>
-          <button class="btn" data-ransom="${c.uid}" ${busy ? 'disabled' : ''}>Принять выкуп</button>
-        </div></div>`;
+      ${typeof staffPanelHtml === 'function' ? staffPanelHtml(c) : ''}
+      ${typeof contractPanelHtml === 'function' ? contractPanelHtml(c, priceBox) : ''}`;
   }
-  const pm = owned && UI.cardMode === 'punish';
+  const pm = false;
   return `<div class="card-hero">
       <div class="card-portrait rarity-${RARITIES[c.rarity].key} ${pm ? 'mode-punish' : ''}" data-uid="${c.uid}" data-mood="${moodAnimKey(c)}" data-expr="${exprOf(c)}" data-emote="${emotesOf(c, owned).join(',')}" style="--fh:${figHeight(presetById(c.preset))}">
         ${renderPortrait(c, 'lg')}
         <div class="bubble"></div>
-        <span class="touch-hint">${pm ? 'Режим наказания: руки, плечи; спина и «пониже спины» — кнопками ниже' : owned ? 'Коснитесь: голова, уши, щёки, плечи, руки…' : 'Коснитесь портрета'}</span>
+        <span class="touch-hint">${owned ? 'Нажмите на портрет — перекинуться словом' : 'Нажмите на портрет'}</span>
       </div>
       <div class="hero-top">
         <button class="back-btn" data-back="${UI.cardFrom === 'market' ? 'market' : 'manor'}" aria-label="Назад"></button>
-        <div class="hero-name"><b>${esc(c.name)}</b><small>${owned ? '' : 'На продажу · '}${raceName(c)} · ${c.age} ${plural(c.age, 'год', 'года', 'лет')}</small></div>
+        <div class="hero-name"><b>${esc(c.name)}</b><small>${owned ? '' : 'Ищет работу · '}${raceName(c)} · ${c.age} ${plural(c.age, 'год', 'года', 'лет')}</small></div>
         <span class="np-rar rar-${RARITIES[c.rarity].key}">${rarityName(c)}</span>
       </div>
-      ${owned ? `<div class="hero-ui">${heroModesHtml(c)}</div>` : ''}
-      <div class="hero-scroll">листайте вниз ↓</div>
+            <div class="hero-scroll">листайте вниз ↓</div>
     </div>
     <div class="name-plate parchment">
       <div class="np-name">${esc(c.name)}</div>
@@ -1313,14 +1120,9 @@ function viewCard() {
       <div class="panel-title">Черты и происхождение</div>
       <div class="chips">${traits}</div>
       <div class="race-box"><b>${r.plural}:</b> ${r.bonus}. <i>${r.quirk}.</i></div>
-      ${c.parents ? `<div class="muted small">Родители: ${esc(c.parents.join(' и '))}. Унаследованные навыки отмечены ★.${c.mix && RACES[c.mix] ? ` Полукровка: кровь отца — ${esc(RACES[c.mix].name.toLowerCase())}.` : ''}</div>` : ''}
+      ${c.parents ? `<div class="muted small">Семья: ${esc(c.parents.join(' и '))}. Семейные таланты отмечены ★.</div>` : ''}
     </div>
-    <div class="panel parchment">
-      <div class="panel-title">Род и сердце</div>
-      ${breed}
-      <div class="hint">${esc(prefHint(c))}</div>
-      ${c.preg ? `<div class="note">В положении: наследник придёт через ${dn(Math.max(0, c.preg.due - S.day))} (отец — ${c.preg.father.anon ? 'анонимный гость салона' : esc(c.preg.father.name)}). Стадия ${pregStage(c)}/3.</div>` : ''}
-    </div>
+    ${typeof questPanelHtml === 'function' && owned ? questPanelHtml(c) : ''}
     ${owned ? actions : ''}`;
 }
 
@@ -1341,11 +1143,11 @@ function viewTavern() {
   const gear = S.gearShop.map(it => `<div class="shop-i gear-row q${it.q}">${gearIcon(it)}<div class="gear-b"><b>${esc(gearName(it))}</b> <small>${SLOT_NAMES[gearSlot(it)]}${gearFem(it) ? ' · для девушек' : ''}</small><div class="muted small">${esc(gearBonText(it))} · прочность ${it.maxDur}</div></div><button class="btn" data-buygear="${it.iid}"><span class="coin"></span>${fmt(gearVal(it) * 1.3)}</button></div>`).join('');
   const lim = debtLimit();
   return `<div class="screen-head"><h1>Таверна «Сытый Грифон»</h1><div class="sub">Доска заказов, слухи и лавки · ранг гильдии ${repRank()}: открыты заказы до ранга ${repRank()}</div></div>
-    <div class="rumor parchment">${S.nextEv ? 'Трактирщица шепчет: «' + esc(MARKET_EVENTS[S.nextEv.id].rumor) + '»' : `Трактирщица шепчет: «Говорят, сейчас лучше всех платят за ${RACES[Object.entries(S.econ.race).sort((a, b) => b[1] - a[1])[0][0]].gen}».`}</div>
+    <div class="rumor parchment">${S.nextEv ? 'Трактирщица шепчет: «' + esc(MARKET_EVENTS[S.nextEv.id].rumor) + '»' : `Трактирщица шепчет: «Говорят, сейчас больше всего ищут ${RACES[Object.entries(S.econ.race).sort((a, b) => b[1] - a[1])[0][0]].gen} в работники».`}</div>
     <div class="panel-title light">Доска заказов</div>
     ${orders || '<div class="empty parchment">Заказов пока нет — загляните завтра.</div>'}
     <div class="panel parchment"><div class="panel-title">Лавка трактирщика</div>${shop}</div>
-    <div class="panel parchment"><div class="panel-title">Старьёвщик: снаряжение</div><div class="small muted">Каждый день новый товар. Купленное кладётся в сундук.</div>${gear}</div>
+    <div class="panel parchment"><div class="panel-title">Старьёвщик: снаряжение</div><div class="small muted">Каждый день новые вещи. Купленное кладётся в сундук.</div>${gear}</div>
     <div class="panel parchment"><div class="panel-title">Гоблин-ростовщик</div>
       <div class="small">Долг: <b>${fmt(S.debt)}</b> мон. · лимит ${fmt(lim)} · 2% в день прибавляется к долгу. Если касса уйдёт в минус, ростовщик сам покроет разницу (репутация −1).</div>
       <div class="btn-row">${[500, 1000, 2000].map(v => `<button class="btn" data-borrow="${v}" ${S.debt + v > lim ? 'disabled' : ''}>Взять ${fmt(v)}</button>`).join('')}</div>
@@ -1360,10 +1162,10 @@ function viewBag() {
   const worn = S.owned.reduce((a, c) => a + c.gear.length, 0);
   return `<div class="screen-head"><h1>Сумка</h1><div class="sub">Угощения — в таверне, снаряжение — у старьёвщика</div></div>
     <div class="panel parchment"><div class="panel-title">Припасы</div>${items || '<div class="muted">Сумка пуста.</div>'}</div>
-    <div class="panel parchment"><div class="panel-title">Сундук со снаряжением (${S.stash.length})</div>${stash || '<div class="muted small">Пусто. Снятое снаряжение попадает сюда.</div>'}<div class="small muted">На жильцах надето ещё ${worn} ${plural(worn, 'предмет', 'предмета', 'предметов')}.</div></div>
+    <div class="panel parchment"><div class="panel-title">Сундук со снаряжением (${S.stash.length})</div>${stash || '<div class="muted small">Пусто. Снятое снаряжение попадает сюда.</div>'}<div class="small muted">На работниках надето ещё ${worn} ${plural(worn, 'предмет', 'предмета', 'предметов')}.</div></div>
     <div class="panel parchment"><div class="panel-title">Сводка</div>
-      <div>Заработано продажами: <b>${fmt(S.totalEarned)}</b> мон.</div>
-      <div>Ранг гильдии: <b>${repRank()}</b> (репутация ${S.rep}). Ранг открывает заказы, места на рынке и пристройки, облегчает торг.</div>
+      <div>Заработано комиссией за устройство: <b>${fmt(S.totalEarned)}</b> мон.</div>
+      <div>Ранг гильдии: <b>${repRank()}</b> (репутация ${S.rep}). Ранг открывает заказы, соискателей на бирже и пристройки, облегчает переговоры.</div>
       ${sparkline()}
     </div>`;
 }
@@ -1382,14 +1184,14 @@ function closeModal() { const r = document.getElementById('modal'); r.classList.
 function haggleModal(uid, mode) {
   const c = findAny(uid);
   const baseP = mode === 'buy' ? price(c) : sellPrice(c);
-  const word = mode === 'buy' ? 'Скидка' : 'Наценка';
-  showModal(mode === 'buy' ? 'Торг с продавцом' : 'Торг с покупателем', `
-    <p>${mode === 'buy' ? 'Сколько попробуем сбить?' : 'Сколько накинем сверху?'} Чем наглее — тем выше риск ${mode === 'buy' ? 'обидеть продавца (цена +10%)' : 'спугнуть покупателя до завтра'}.</p>
+  const word = mode === 'buy' ? 'Меньше подъёмных' : 'Больше комиссии';
+  showModal(mode === 'buy' ? 'Обсудить условия найма' : 'Переговоры с нанимателем', `
+    <p>${mode === 'buy' ? 'Насколько попробуем снизить подъёмные?' : 'Сколько попросим сверху за рекомендацию?'} Чем настойчивее — тем выше риск ${mode === 'buy' ? 'обидеть соискателя (подъёмные +10%)' : 'что наниматель отложит разговор до завтра'}.</p>
     <input type="range" id="hg" min="0" max="30" value="10" step="1">
     <div class="hg-info"><span>${word}: <b id="hgp">10</b>%</span><span>Итог: <b id="hgv"></b></span></div>
     <div class="hg-chance">Шанс: <b id="hgc"></b></div>
-    <div class="small muted">Помогают репутация и Обаяние вашего лучшего торговца.</div><div id="hgwhy"></div>`,
-    [{ label: 'Отмена', act: 'close' }, { label: mode === 'buy' ? 'Предложить цену' : 'Назвать цену', cls: 'btn-primary', act: () => doHaggle(uid, mode, +document.getElementById('hg').value) }]);
+    <div class="small muted">Помогают репутация и Обаяние вашего лучшего переговорщика.</div><div id="hgwhy"></div>`,
+    [{ label: 'Отмена', act: 'close' }, { label: mode === 'buy' ? 'Предложить условия' : 'Назвать сумму', cls: 'btn-primary', act: () => doHaggle(uid, mode, +document.getElementById('hg').value) }]);
   const upd = () => {
     const v = +document.getElementById('hg').value, p = haggleChance(v, c);
     document.getElementById('hgp').textContent = v;
@@ -1403,31 +1205,18 @@ function doHaggle(uid, mode, pct) {
   closeModal();
   const c = findAny(uid);
   if (R() < haggleChance(pct, c)) {
-    if (mode === 'buy') { toast(`Продавец вздохнул и согласился на −${pct}%.`); buy(uid, pct); }
-    else { toast(`Покупатель кивнул: +${pct}% сверху.`); sell(uid, pct); }
+    if (mode === 'buy') { toast(`Соискатель подумал и согласился на −${pct}% подъёмных.`); buy(uid, pct); }
+    else { toast(`Наниматель кивнул: +${pct}% к комиссии.`); sell(uid, pct); }
   } else {
     sfx('bad');
-    if (mode === 'buy') { c.haggleLock = true; c.priceAdj = 1.1; showModal('Продавец обиделся', '<p>«За такие деньги торгуйтесь с кем-нибудь другим!» Цена выросла на 10%, торговаться сегодня больше не выйдет.</p>'); }
-    else { c.sellLockDay = S.day; showModal('Покупатель ушёл', '<p>Покупатель хмыкнул и ушёл к соседней лавке. Завтра придут другие.</p>'); }
+    if (mode === 'buy') { c.haggleLock = true; c.priceAdj = 1.1; showModal('Соискатель обиделся', '<p>«Я своё умение ценю, управляющий. На таких условиях — не пойду». Подъёмные выросли на 10%, обсуждать сегодня больше не выйдет.</p>'); }
+    else { c.sellLockDay = S.day; showModal('Наниматель отложил разговор', '<p>Наниматель хмыкнул: «Подумаю». Завтра можно попробовать снова.</p>'); }
     save(); render();
   }
 }
-function mateModal(uid) {
-  const a = findOwned(uid);
-  const cands = S.owned.filter(b => b !== a && b.g !== a.g);
-  const list = cands.map(b => {
-    const chk = mateCheck(a, b), inf = mateInfo(a, b);
-    return `<div class="pick ${chk.ok ? '' : 'dis'}" ${chk.ok ? `data-mateto="${b.uid}"` : ''}>
-      <div class="pick-p">${renderPortrait(b, 'sm')}</div>
-      <div><b>${esc(fn1(b))}</b> · ${raceName(b)}<div class="small hint-l${inf.h.lvl}">${inf.h.text}</div>
-      ${chk.ok ? `<div class="small">Согласие ≈ <b>${Math.round(inf.willing * 100)}%</b> · беременность ≈ <b>${Math.round(inf.preg * 100)}%</b>${inHeat(inf.f) ? ' <span class="heat-t">течка</span>' : ''}</div>` : `<div class="small muted">${chk.why}</div>`}</div></div>${chk.ok ? mateWhy(a, b) : ''}`;
-  }).join('');
-  showModal('Спарить', `<p class="small">Устроить паре вечер наедине. Мужчина может ходить на свидания сколько угодно (но устаёт), женщина — раз в день. Родню сводить нельзя. Шанс беременности растёт от плодовитости, силы рода, здоровья, настроения и симпатии; весной — выше. Беременность длится 9 дней, затем приходит взрослый наследник.</p>${list || '<p class="muted">В поместье нет никого противоположного пола.</p>'}`, [{ label: 'Закрыть', act: 'close' }]);
-  document.getElementById('modal')._mateA = uid;
-}
 function assignModal(oid) {
   const o = S.orders.find(x => x.id === oid), t = ORDER_TEMPLATES[o.tpl];
-  const list = homeChars().map(c => `<div class="pick ${c.preg ? 'dis' : ''}" ${c.preg ? '' : `data-assignto="${c.uid}" data-order="${oid}"`}>
+  const list = homeChars().map(c => `<div class="pick" data-assignto="${c.uid}" data-order="${oid}">
     <div class="pick-p">${renderPortrait(c, 'sm')}</div>
     <div><b>${esc(fn1(c))}</b> · ${statName(t.stat)} ${eff(c, t.stat)}, ${statName(t.stat2)} ${eff(c, t.stat2)}<div class="small">${c.preg ? 'В положении — нельзя' : `Успех: <b>${Math.round(orderChance(c, o) * 100)}%</b> · блестяще: ${Math.round(critChance(c) * 100)}% · усталость ${Math.round(c.fatigue)}`}</div></div></div>${c.preg ? '' : orderWhy(c, o)}`).join('');
   showModal('Кого отправить?', `<p class="small">«${esc(t.title)}»: ${dn(t.days)}. На успех влияют оба навыка, Удача, усталость, настроение, стресс, здоровье и снаряжение.</p>${list || '<p class="muted">Все заняты или поместье пусто.</p>'}`, [{ label: 'Закрыть', act: 'close' }]);
@@ -1467,7 +1256,7 @@ function menuModal() {
       <label class="set-row"><span>Музыка</span><input type="checkbox" id="set-music" ${st.music ? 'checked' : ''}></label>
       <label class="set-row"><span>Звуки</span><input type="checkbox" id="set-sfx" ${st.sfx ? 'checked' : ''}></label>
       <label class="set-row"><span>Громкость</span><input type="range" id="set-vol" min="0" max="100" value="${Math.round(st.vol * 100)}"></label>
-      <label class="set-row"><span>Обращаться ко мне</span><select id="set-pg"><option value="m" ${playerFem() ? '' : 'selected'}>хозяин, господин</option><option value="f" ${playerFem() ? 'selected' : ''}>хозяйка, госпожа</option></select></label>
+      <label class="set-row"><span>Обращаться ко мне</span><select id="set-pg"><option value="m" ${playerFem() ? '' : 'selected'}>управляющий, сударь</option><option value="f" ${playerFem() ? 'selected' : ''}>управляющая, сударыня</option></select></label>
       <label class="set-row"><span>Анимации</span><input type="checkbox" id="set-anim" ${Anim.enabled() ? 'checked' : ''}></label>
     </div>
     <p class="small">Игра сохраняется автоматически после каждого действия. Ручное сохранение — отдельный слот.</p>`,
@@ -1480,7 +1269,7 @@ function menuModal() {
   document.getElementById('set-music').addEventListener('change', e => Audio_.setMusic(e.target.checked));
   document.getElementById('set-sfx').addEventListener('change', e => Audio_.setSfx(e.target.checked));
   document.getElementById('set-vol').addEventListener('input', e => Audio_.setVol(e.target.value / 100));
-  document.getElementById('set-pg').addEventListener('change', e => { S.playerG = e.target.value; save(); toast('Слуги будут обращаться к вам: «' + addr('{х}') + '», «' + addr('{г}') + '».'); });
+  document.getElementById('set-pg').addEventListener('change', e => { S.playerG = e.target.value; save(); toast('Работники будут обращаться к вам: «' + addr('{х}') + '», «' + addr('{г}') + '».'); });
   document.getElementById('set-anim').addEventListener('change', e => { Anim.setEnabled(e.target.checked); FX.season(true); _lastScreen = null; render(); });
 }
 
@@ -1506,17 +1295,12 @@ document.addEventListener('click', (e) => {
   if (d.back) return go(d.back);
   if (d.task) { e.stopPropagation(); return setTask(d.uid, d.task); }
   if (d.trainstat) return setTrainStat(d.uid, d.trainstat);
-  if (d.touch) return touch(d.uid, d.touch, +d.side || 0);
-  if (d.pet) return pet(d.pet);
-  if (d.buy) { const c = S.market.find(x => x.uid === d.buy); return confirmModal('Покупка', `Купить ${esc(c.name)} за ${fmt(price(c))} мон.?`, 'Купить', () => buy(d.buy)); }
+  if (d.buy) { const c = S.market.find(x => x.uid === d.buy); return confirmModal('Найм', `Нанять ${esc(c.name)}? Подъёмные ${fmt(price(c))} мон.${typeof wageOf === 'function' ? `, жалованье ${wageOf(c)} мон. в день, договор на ${CONTRACT_DAYS} дней` : ''}.`, 'Нанять', () => buy(d.buy)); }
   if (d.haggle) return haggleModal(d.haggle, 'buy');
   if (d.appraise) return appraise(d.appraise);
   if (d.act) return act(d.uid, d.act);
-  if (d.sell) { const c = findOwned(d.sell); return showModal('Продажа', `<p>Скупщик предлагает <b>${fmt(sellPrice(c))}</b> мон. за ${esc(c.name)}.</p>`, [{ label: 'Отмена', act: 'close' }, { label: 'Торговаться', act: () => haggleModal(d.sell, 'sell') }, { label: 'Продать', cls: 'btn-primary', act: () => { closeModal(); sell(d.sell); } }]); }
-  if (d.free) return confirmModal('Отпустить на волю', `${esc(findOwned(d.free).name)} уйдёт свободным. Вы ничего не получите, кроме доброй славы (репутация растёт).`, 'Отпустить', () => freeChar(d.free, false));
-  if (d.ransom) return confirmModal('Принять выкуп', `${esc(findOwned(d.ransom).name)} заплатит ${fmt(price(findOwned(d.ransom)) * 0.4)} мон. и станет свободным.`, 'Принять', () => freeChar(d.ransom, true));
-  if (d.mate) return mateModal(d.mate);
-  if (d.mateto) return mate(document.getElementById('modal')._mateA, d.mateto);
+  if (d.sell) { const c = findOwned(d.sell); const pb = typeof placeBlock === 'function' && placeBlock(c); if (pb) return toast(pb); return showModal('Рекомендовать на новое место', `<p>${esc(c.name)} готов${g(c, '', 'а')} перейти к новому нанимателю — там платят больше. Гильдия выплатит вам комиссию за подготовку работника: <b>${fmt(sellPrice(c))}</b> мон.</p>`, [{ label: 'Отмена', act: 'close' }, { label: 'Обсудить сумму', act: () => haggleModal(d.sell, 'sell') }, { label: 'Рекомендовать', cls: 'btn-primary', act: () => { closeModal(); sell(d.sell); } }]); }
+  if (d.free) { const c = findOwned(d.free); return confirmModal('Рассчитать', `${esc(c.name)} получит расчёт${typeof severanceOf === 'function' ? ` и выходное пособие ${fmt(severanceOf(c))} мон.` : ''} и добрую рекомендацию. Репутация вырастет.`, 'Рассчитать', () => freeChar(d.free, false)); }
   if (d.assign) return assignModal(d.assign);
   if (d.assignto) return assignOrder(d.order, d.assignto);
   if (d.buyitem) return buyItem(d.buyitem);

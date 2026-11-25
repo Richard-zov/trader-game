@@ -35,7 +35,7 @@ const RACES = {
     name: 'Гном', fname: 'Гномка', gen: 'гномов', plural: 'Гномы', base: 500,
     mods: { mas: 10, end: 5, agi: -6 },
     bonus: 'Ошибается на работе вдвое реже',
-    quirk: 'Упрям: строгость действует вдвое слабее',
+    quirk: 'Упрям: замечания по работе действуют вдвое слабее',
   },
 };
 
@@ -50,8 +50,8 @@ const RARITIES = [
 const TRAITS = {
   diligent: { name: 'Трудолюбие', desc: 'Работа приносит +20% монет', mult: 1.1 },
   lazy: { name: 'Лень', desc: 'Усталость от дел +30%', mult: 0.85 },
-  charming: { name: 'Обаяние', desc: 'Покупатели в восторге: цена +15%', mult: 1.15 },
-  stubborn: { name: 'Упрямство', desc: 'Строгость действует слабее', mult: 0.9 },
+  charming: { name: 'Обаяние', desc: 'Клиенты в восторге: ценность +15%', mult: 1.15 },
+  stubborn: { name: 'Упрямство', desc: 'Замечания действуют слабее', mult: 0.9 },
   clever: { name: 'Смекалка', desc: 'Обучение +50%', mult: 1.15 },
   clumsy: { name: 'Неуклюжесть', desc: 'Шанс ошибки +4%', mult: 0.9 },
   cheerful: { name: 'Весёлый нрав', desc: 'Стресс растёт на 30% медленнее', mult: 1.05 },
@@ -74,23 +74,16 @@ const ACCESSORIES = {
   wreath: { name: 'Венок', slot: 'head', ov: { k: 1.15, dx: 0, dy: 0.1, r: 0 }, bon: { calm: 3, mood: 3 }, val: 35 },
   scarf: { name: 'Шарф', slot: 'neck', bon: { end: 2, hp: 2 }, val: 40 },
   pendant: { name: 'Кулон', slot: 'neck', bon: { wil: 3, calm: 2 }, val: 75 },
-  bell: { name: 'Колокольчик', slot: 'neck', bon: { loy: 25, mood: 2 }, val: 50 },
   earrings: { name: 'Серьги', slot: 'ears', bon: { cha: 2, price: 8 }, val: 90 },
   glasses: { name: 'Очки', slot: 'face', bon: { int: 4, train: 12 }, val: 85 },
   cloak: { name: 'Плащ', slot: 'back', bon: { end: 3, hp: 3 }, val: 70 },
   belt: { name: 'Пояс с сумкой', slot: 'waist', bon: { inc: 10, agi: 1 }, val: 80 },
   bracelet: { name: 'Рунный браслет', slot: 'wrist', bon: { luk: 4, order: 5 }, val: 95 },
   gloves: { name: 'Перчатки', slot: 'hands', bon: { mas: 3, inc: 5 }, val: 60 },
-  // Чулки и колготки — отдельный слот «ноги». Видны на арте, если поверх нет платья (с бельём, комплектом или без наряда).
-  silkst: { name: 'Шёлковые чулки', slot: 'legs', fem: 1, bon: { cha: 3, price: 5 }, val: 60 },
-  lacest: { name: 'Кружевные чулки с бантиками', slot: 'legs', fem: 1, bon: { cha: 4, mood: 3 }, val: 85 },
+  // Колготки и гольфы — слот «ноги» (под одеждой, на арте не видны).
   tights: { name: 'Тёплые колготки', slot: 'legs', fem: 1, bon: { end: 2, calm: 2 }, val: 45 },
   kneesox: { name: 'Гольфы в полоску', slot: 'legs', fem: 1, bon: { agi: 2, mood: 2 }, val: 35, art: 'overknee' },
-  fishnet: { name: 'Чулки в сеточку', slot: 'legs', fem: 1, bon: { cha: 4, price: 6 }, val: 75, art: 'fishnet' },
-  garter: { name: 'Чулки с поясом и подвязками', slot: 'legs', fem: 1, bon: { cha: 5, loy: 10 }, val: 120, art: 'garter' },
   overknee: { name: 'Гольфы выше колена', slot: 'legs', fem: 1, bon: { agi: 3, mood: 3 }, val: 50, art: 'overknee' },
-  seamed: { name: 'Чулки со швом', slot: 'legs', fem: 1, bon: { cha: 3, mas: 2, price: 4 }, val: 80, art: 'stock' },
-  thighhi: { name: 'Ажурные чулки', slot: 'legs', fem: 1, bon: { cha: 3, calm: 2 }, val: 65, art: 'stock' },
 };
 // Какой арт ног показывать: свой вариант (сеточка, подвязки, гольфы) или общий «чулки»
 const LEG_ARTS = ['fishnet', 'garter', 'overknee'];
@@ -101,26 +94,22 @@ const OUTFITS = {
   peasant: { name: 'Крестьянский наряд', bon: { end: 2, hp: 2 }, val: 50 },
   noble: { name: 'Благородный наряд', bon: { cha: 5, price: 12 }, val: 220 },
   travel: { name: 'Походный костюм', bon: { agi: 3, order: 6 }, val: 120 },
-  maid: { name: 'Наряд служанки', bon: { mas: 2, inc: 10 }, val: 110 },
+  maid: { name: 'Форма горничной', bon: { mas: 2, inc: 10 }, val: 110 },
   robe: { name: 'Мантия чародея', bon: { int: 4, train: 15 }, val: 160 },
   work: { name: 'Рабочий фартук', bon: { str: 3, mas: 2 }, val: 80 },
-  swim: { name: 'Купальник', nameM: 'Купальные шорты', bon: { agi: 3, mood: 3 }, val: 70 },
-  lace: { name: 'Кружевной комплект', bon: { cha: 4, loy: 15 }, val: 140, fem: 1 },
   dress: { name: 'Летнее платье', bon: { cha: 3, mood: 4 }, val: 90, fem: 1 },
   corset: { name: 'Корсетное платье', nameM: 'Жилет с корсетным поясом', bon: { cha: 4, end: 2, price: 8 }, val: 180 },
-  night: { name: 'Шёлковая сорочка', nameM: 'Шёлковый халат', bon: { calm: 4, hp: 2 }, val: 110 },
 };
 // реакция на подаренную одежду
-const OUTFIT_SHY = { swim: 1, lace: 1, night: 1, silkst: 1, lacest: 1, fishnet: 1, garter: 1, seamed: 1, thighhi: 1 };
-const OUTFIT_SHY_L = ['*краснеет до ушей* Это так… открыто, {х}. Но если вам нравится — я буду носить.', 'Ой… {х}, в этом я почти как без одежды… Простите. Спасибо.', '*прикрывается ладонями и тут же опускает руки* Как прикажете, {х}.'];
-const OUTFIT_OK_L = ['Спасибо, {х}! Вам нравится, как я выгляжу?', 'Какая красота… Спасибо, {х}!', '*кружится* Я буду беречь эту вещь, {х}.'];
+const OUTFIT_SHY = {};
+const OUTFIT_SHY_L = ['Хм, это не совсем мой стиль, {х}. Но спасибо, примерю.', 'Непривычно… но за заботу спасибо, {х}.'];
+const OUTFIT_OK_L = ['Спасибо, {х}! В таком и на ярмарку не стыдно.', 'Какая красота… Спасибо, {х}!', '*кружится* Я буду беречь эту вещь, {х}.'];
 const OUTFITS_CLASSIC = ['peasant', 'noble', 'travel', 'maid', 'robe', 'work'];
 // Если у персонажа нет арта именно этого наряда — показываем ближайший похожий (наряд всегда виден на портрете)
 const OUTFIT_NEAR = {
   peasant: ['work', 'maid', 'dress', 'travel'], noble: ['corset', 'dress', 'robe', 'maid'], travel: ['work', 'peasant'],
-  maid: ['peasant', 'dress', 'work'], robe: ['night', 'noble', 'dress'], work: ['peasant', 'travel', 'maid'],
-  swim: ['lace'], lace: ['swim'], dress: ['night', 'corset', 'peasant', 'maid', 'noble'], corset: ['noble', 'dress', 'maid'],
-  night: ['dress', 'robe', 'lace'],
+  maid: ['peasant', 'dress', 'work'], robe: ['noble', 'dress'], work: ['peasant', 'travel', 'maid'],
+  dress: ['corset', 'peasant', 'maid', 'noble'], corset: ['noble', 'dress', 'maid'],
 };
 // Качество предмета: множитель бонусов, прочность, стоимость
 const GEAR_Q = [
@@ -135,33 +124,33 @@ const BON_NAMES = {
   order: '% к успеху заказов', loy: '% к росту лояльности', hp: ' здоровья в день',
 };
 const OUTFIT_ART = {
-  f01: ['maid', 'noble', 'peasant', 'travel', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
-  f02: ['peasant', 'robe', 'travel', 'dress', 'corset', 'night', 'preg1', 'preg2', 'preg3', 'swim', 'stock', 'lace'],
-  f03: ['maid', 'noble', 'peasant', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
-  f04: ['maid', 'noble', 'peasant', 'dress', 'corset', 'night', 'preg1', 'preg2', 'preg3', 'swim', 'stock', 'lace'],
-  f05: ['maid', 'noble', 'robe', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
-  f06: ['noble', 'travel', 'work', 'preg1', 'preg2', 'preg3', 'swim', 'stock', 'lace'],
-  f07: ['maid', 'peasant', 'robe', 'preg1', 'preg2', 'preg3', 'swim', 'stock', 'lace'],
-  f08: ['peasant', 'robe', 'travel', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
-  f09: ['peasant', 'robe', 'travel', 'dress', 'corset', 'night', 'preg1', 'preg2', 'preg3', 'swim', 'stock', 'lace'],
-  f10: ['maid', 'noble', 'robe', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
-  f11: ['noble', 'robe', 'travel', 'preg1', 'preg2', 'preg3'],
-  f12: ['noble', 'robe', 'travel', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
-  f13: ['maid', 'peasant', 'work', 'preg1', 'preg2', 'preg3'],
-  f14: ['maid', 'noble', 'travel', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
-  f15: ['noble', 'peasant', 'travel', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
-  f16: ['maid', 'peasant', 'travel', 'dress', 'corset', 'night', 'preg1', 'preg2', 'preg3'],
-  f17: ['peasant', 'travel', 'work', 'preg1', 'preg2', 'preg3'],
-  f18: ['maid', 'noble', 'robe', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
-  f19: ['maid', 'peasant', 'work', 'preg1', 'preg2', 'preg3'],
-  f20: ['noble', 'robe', 'work', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
-  f21: ['maid', 'robe', 'work', 'preg1', 'preg2', 'preg3'],
-  f22: ['maid', 'peasant', 'work', 'preg1', 'preg2', 'preg3'],
-  f23: ['robe', 'travel', 'work', 'preg1', 'preg2', 'preg3'],
-  f24: ['robe', 'noble', 'travel', 'dress', 'corset', 'night', 'swim', 'stock', 'lace', 'fishnet', 'garter', 'overknee', 'preg1', 'preg2', 'preg3'],
-  m01: ['noble', 'travel', 'work', 'swim', 'night', 'corset'],
+  f01: ['maid', 'noble', 'peasant', 'travel'],
+  f02: ['peasant', 'robe', 'travel', 'dress', 'corset'],
+  f03: ['maid', 'noble', 'peasant'],
+  f04: ['maid', 'noble', 'peasant', 'dress', 'corset'],
+  f05: ['maid', 'noble', 'robe'],
+  f06: ['noble', 'travel', 'work'],
+  f07: ['maid', 'peasant', 'robe'],
+  f08: ['peasant', 'robe', 'travel'],
+  f09: ['peasant', 'robe', 'travel', 'dress', 'corset'],
+  f10: ['maid', 'noble', 'robe'],
+  f11: ['noble', 'robe', 'travel'],
+  f12: ['noble', 'robe', 'travel'],
+  f13: ['maid', 'peasant', 'work'],
+  f14: ['maid', 'noble', 'travel'],
+  f15: ['noble', 'peasant', 'travel'],
+  f16: ['maid', 'peasant', 'travel', 'dress', 'corset'],
+  f17: ['peasant', 'travel', 'work'],
+  f18: ['maid', 'noble', 'robe'],
+  f19: ['maid', 'peasant', 'work'],
+  f20: ['noble', 'robe', 'work'],
+  f21: ['maid', 'robe', 'work'],
+  f22: ['maid', 'peasant', 'work'],
+  f23: ['robe', 'travel', 'work'],
+  f24: ['robe', 'noble', 'travel', 'dress', 'corset'],
+  m01: ['noble', 'travel', 'work', 'corset'],
   m02: ['noble', 'peasant', 'robe'],
-  m03: ['noble', 'robe', 'travel', 'swim', 'night', 'corset'],
+  m03: ['noble', 'robe', 'travel', 'corset'],
   m04: ['noble', 'robe', 'travel'],
   m05: ['peasant', 'travel', 'work'],
   m06: ['noble', 'peasant', 'work'],
@@ -219,7 +208,7 @@ const PRESETS = [
 ];
 
 const ITEMS = {
-  gingerbread: { name: 'Медовый пряник', desc: 'Настроение +15 (сладкоежкам и тем, кто в положении, — вдвое больше)', price: 25 },
+  gingerbread: { name: 'Медовый пряник', desc: 'Настроение +15 (сладкоежкам — вдвое больше)', price: 25 },
   tea: { name: 'Травяной чай', desc: 'Стресс −20', price: 30 },
   tonic: { name: 'Эликсир бодрости', desc: 'Усталость −35', price: 45 },
   salve: { name: 'Целебная мазь', desc: 'Здоровье +30, лечит простуду', price: 55 },
@@ -238,10 +227,10 @@ const ORDER_TEMPLATES = [
   { title: 'Гонец до Ивового брода', desc: 'Срочное письмо нужно доставить до заката. Дорога петляет.', stat: 'agi', stat2: 'end', min: 35, days: 1, reward: 160, rank: 0 },
   { title: 'Ночная стража склада', desc: 'Три ночи подряд кто-то таскает яблоки. Нужен стойкий сторож.', stat: 'end', stat2: 'wil', min: 35, days: 3, reward: 330, rank: 0 },
   { title: 'Спор с упрямым гоблином', desc: 'Гоблин-ростовщик не отдаёт залог. Требуется железная выдержка.', stat: 'wil', stat2: 'int', min: 40, days: 2, reward: 300, rank: 1 },
-  { title: 'Розыгрыш в лотерее гильдии', desc: 'Купить билет и вытянуть счастливый жребий за заказчика. Говорят, удача заразна.', stat: 'luk', stat2: 'cha', min: 30, days: 1, reward: 150, rank: 0 },
+  { title: 'Розыгрыш в лотерее гильдии', desc: 'Взять билет и вытянуть счастливый жребий за заказчика. Говорят, удача заразна.', stat: 'luk', stat2: 'cha', min: 30, days: 1, reward: 150, rank: 0 },
   { title: 'Охрана каравана', desc: 'Караван с шёлком идёт через Каменную Падь. Нужен боец.', stat: 'str', stat2: 'agi', min: 50, days: 3, reward: 450, rank: 2, war: true },
   { title: 'Учитель для купеческих детей', desc: 'Научить грамоте и счёту двух непосед.', stat: 'int', stat2: 'cha', min: 50, days: 3, reward: 420, rank: 2 },
-  { title: 'Хозяйка бала у бургомистра', desc: 'Встречать гостей, помнить имена и улыбаться до полуночи.', stat: 'cha', stat2: 'int', min: 55, days: 2, reward: 520, rank: 3, fest: true },
+  { title: 'Распорядитель бала у бургомистра', desc: 'Встречать гостей, помнить имена и улыбаться до полуночи.', stat: 'cha', stat2: 'int', min: 55, days: 2, reward: 520, rank: 3, fest: true },
   { title: 'Ювелирный заказ графини', desc: 'Огранить три сапфира так, чтобы графиня перестала вздыхать.', stat: 'mas', stat2: 'agi', min: 60, days: 3, reward: 700, rank: 3 },
   { title: 'Разведка у границы', desc: 'Тихо пройти лесом и сосчитать чужие костры.', stat: 'agi', stat2: 'wil', min: 60, days: 3, reward: 680, rank: 4, war: true },
   { title: 'Переговоры с гномьим кланом', desc: 'Кланы спорят о шахте. Нужен тот, кто выдержит четыре часа упрёков.', stat: 'wil', stat2: 'cha', min: 65, days: 3, reward: 820, rank: 4 },
@@ -257,12 +246,12 @@ const RANKS = [
 // Что даёт каждый навык (показывается в карточке)
 const STAT_EFF = {
   str: 'ремесло, силовые заказы', agi: 'меньше ошибок, заказы гонцов', end: 'меньше усталости, здоровье',
-  int: 'скорость учёбы, торговля', cha: 'торговля, цена продажи', mas: 'ремесло, меньше ошибок',
-  wil: 'меньше стресса, упрямство к строгости', luk: 'заказы, находки, удачные сделки',
+  int: 'скорость учёбы, торговля', cha: 'торговля, комиссия за устройство', mas: 'ремесло, меньше ошибок',
+  wil: 'меньше стресса, стойкость к критике', luk: 'заказы, находки, удачные сделки',
 };
 
 const SEASONS = [
-  { name: 'Весна', desc: 'Пора любви: шанс беременности +8%, настроение +3', fert: 0.08, mood: 3 },
+  { name: 'Весна', desc: 'Пора сева: настроение +3, обучение +10%', mood: 3, train: 0.1 },
   { name: 'Лето', desc: 'Много работы: доход +10%, но усталость +3', inc: 0.1, fat: 3 },
   { name: 'Осень', desc: 'Урожай: еда дешевле на 20%, спрос +10%', food: 0.8, dem: 0.1 },
   { name: 'Зима', desc: 'Холода: дрова +25 мон./день, стресс +2, награды за заказы +15%', heat: 25, stress: 2, ord: 0.15 },
@@ -271,8 +260,8 @@ const SEASONS = [
 // Рыночные события: длятся несколько дней, о них заранее ходят слухи
 const MARKET_EVENTS = {
   festival: { name: 'Ярмарка', rumor: 'Скоморохи уже репетируют — говорят, скоро ярмарка.', start: 'Началась ярмарка! Спрос на всех +25%, торговля за прилавком приносит на 20% больше.', days: 3, dem: { all: 0.25 }, shop: 0.2 },
-  war: { name: 'Война на границе', rumor: 'С севера тянутся телеги с ранеными. Пахнет войной.', start: 'На границе война. Сильных и выносливых раскупают: гномы и зверолюди в цене, еда дорожает на 30%.', days: 5, dem: { dwarf: 0.3, beast: 0.25, elf: -0.1 }, food: 1.3 },
+  war: { name: 'Война на границе', rumor: 'С севера тянутся телеги с ранеными. Пахнет войной.', start: 'На границе война. Сильных и выносливых нанимают нарасхват: гномы и зверолюди в цене, еда дорожает на 30%.', days: 5, dem: { dwarf: 0.3, beast: 0.25, elf: -0.1 }, food: 1.3 },
   plague: { name: 'Мор', rumor: 'В соседней деревне закрыли колодец. Знахарки тревожатся.', start: 'В округе мор. Спрос упал на 20%, легко заболеть — следите за здоровьем.', days: 4, dem: { all: -0.2 }, sick: 0.08 },
-  caravan: { name: 'Большой караван', rumor: 'Скоро прибудет караван с востока — готовьте кошельки.', start: 'Пришёл большой караван! На рынке больше предложений, эльфы в цене, покупатели щедрее (+10% при продаже).', days: 3, dem: { elf: 0.3, human: 0.1 }, extra: 4, sell: 0.1 },
+  caravan: { name: 'Большой караван', rumor: 'Скоро прибудет караван с востока — готовьте кошельки.', start: 'Пришёл большой караван! На бирже больше соискателей, эльфы в цене, наниматели щедрее (+10% к комиссии).', days: 3, dem: { elf: 0.3, human: 0.1 }, extra: 4, sell: 0.1 },
   drought: { name: 'Засуха', rumor: 'Третью неделю ни облачка. Мельники хмурятся.', start: 'Засуха: еда дорожает на 60%, ремесло приносит на 15% меньше.', days: 4, food: 1.6, craft: -0.15 },
 };

@@ -46,7 +46,7 @@ window.bldNode = function (id, b) {
     + `<rect x="${-w / 2}" y="${y0}" width="${w}" height="${h - y0 > 0 ? h : 40}" fill="transparent"/></g>`;
 };
 window.bldTag = function (id, b) {
-  const P = PLOTS[b.plot], nm = (BT[b.t].short || BT[b.t].n).replace('Дом утех ', ''), txt = `${nm}${b.lv ? ' · ' + b.lv : ''}${b.job ? ' ⚒' : ''}`, w = Math.max(40, txt.length * 4.5 + 10);
+  const P = PLOTS[b.plot], nm = (BT[b.t].short || BT[b.t].n).replace('Чайный дом ', ''), txt = `${nm}${b.lv ? ' · ' + b.lv : ''}${b.job ? ' ⚒' : ''}`, w = Math.max(40, txt.length * 4.5 + 10);
   const s = sprOf(b), { w: sw } = sprBox(s.k, s.g, b.plot), y = P.y + sw * 0.2 + (b.job ? 9 : 2);
   return `<g class="bld-lab" data-cid="${id}"><rect x="${P.x - w / 2}" y="${y}" width="${w}" height="11.5" rx="5.75" fill="#1d150d" opacity=".78" stroke="#c9a25a" stroke-width=".6"/><text x="${P.x}" y="${y + 8.4}" text-anchor="middle" font-size="7.4" fill="#f6e6c2">${esc(txt)}</text></g>`;
 };
@@ -62,7 +62,7 @@ window.mapSvg = function () {
   }
   for (const [p, P] of Object.entries(PLOTS)) {
     if (used.has(p) || !E.dist[P.d]) continue;
-    if (P.big) s += `<g class="plot plot-sq" data-csq="1"><ellipse cx="${P.x}" cy="${P.y}" rx="34" ry="20" fill="#000" fill-opacity="0"/><rect x="${P.x - 25}" y="${P.y + 16}" width="50" height="${mktLv() ? 12 : 20}" rx="5" fill="#1d150d" opacity=".72"/><text x="${P.x}" y="${P.y + 25}" text-anchor="middle" font-size="7.4" fill="#f6e6c2" font-weight="700">Площадь</text>${mktLv() ? '' : `<text x="${P.x}" y="${P.y + 33}" text-anchor="middle" font-size="6.2" fill="#e8d3a6">под рынок</text>`}</g>`;
+    if (P.big) s += `<g class="plot plot-sq" data-csq="1"><ellipse cx="${P.x}" cy="${P.y}" rx="34" ry="20" fill="#000" fill-opacity="0"/><rect x="${P.x - 25}" y="${P.y + 16}" width="50" height="${mktLv() ? 12 : 20}" rx="5" fill="#1d150d" opacity=".72"/><text x="${P.x}" y="${P.y + 25}" text-anchor="middle" font-size="7.4" fill="#f6e6c2" font-weight="700">Площадь</text>${mktLv() ? '' : `<text x="${P.x}" y="${P.y + 33}" text-anchor="middle" font-size="6.2" fill="#e8d3a6">под биржу</text>`}</g>`;
     else s += `<g class="plot" data-cplot="${p}" transform="translate(${P.x} ${P.y})"><ellipse rx="17" ry="10" fill="#fff3c8" fill-opacity=".18" stroke="#ffe7a8" stroke-width="1.1" stroke-dasharray="3.5 2.5" class="plot-ring"/><text y="4" text-anchor="middle" font-size="12" fill="#fff3c8" font-weight="700">+</text></g>`;
   }
   const items = Object.entries(E.b).sort((a, b) => PLOTS[a[1].plot].y - PLOTS[b[1].plot].y);
@@ -112,9 +112,9 @@ new MutationObserver(() => { const box = document.querySelector('.cz-box'); if (
 // ---------- «Что даёт уровень N» ----------
 function gradePerks(t, lv) {
   const B = BT[t], out = [];
-  if (t === 'slavemkt') { out.push(`+${MKT.lots[lv]} лотов, скидка ${Math.round(MKT.disc[lv] * 100)}%, продажа +${Math.round(MKT.sell[lv] * 100)}%`, `загон ${MKT.stable[lv]} мест, покупателей в день ${MKT.buyers[lv]}, редкости +${Math.round(MKT.rare[lv] * 100)}%`); if (lv >= 2) out.push('бесплатное обновление лотов раз в день'); out.push(`репутация района +${5 * lv}, безопасность −${5 * lv}`); return out; }
+  if (t === 'slavemkt') { out.push(`+${MKT.lots[lv]} соискателей, подъёмные −${Math.round(MKT.disc[lv] * 100)}%, комиссия +${Math.round(MKT.sell[lv] * 100)}%`, `резерв ${MKT.stable[lv]} мест, нанимателей в день ${MKT.buyers[lv]}, редкие мастера +${Math.round(MKT.rare[lv] * 100)}%`); if (lv >= 2) out.push('бесплатное объявление раз в день'); out.push(`репутация района +${5 * lv}, безопасность −${5 * lv}`); return out; }
   if (!B.noWork) { const sl = (B.slots || DEF_SLOTS)[lv]; out.push(`работников: ${sl}${lv > 1 && sl > (B.slots || DEF_SLOTS)[lv - 1] ? ' (+' + (sl - (B.slots || DEF_SLOTS)[lv - 1]) + ')' : ''}`); if (B.base) out.push(`выработка ×${(1 + 0.4 * (lv - 1)).toFixed(1)}, требование к навыкам ${12 + lv * 6}`); else out.push(`требование к навыкам ${12 + lv * 6}`); }
-  const per = { market: [`репутация района +${2 * lv}`], quarry: ['можно копить камень на склад', `шум: репутация района −${2 * lv}`], workshop: ['можно копить инструменты на склад'], farm: [`еда в поместье дешевле на ${Math.min(45, 6 * lv)}% (все огороды вместе — до 45%)`], tavern: [`счастье +${2 * lv}, безопасность −${3 * lv}`], brothel: [`содержание ${15 + 10 * lv} мон./день; политика дома меняет доход и стресс`], baths: [`каждый день всем стресс −${3 * lv}, здоровье +${2 * lv}`, `счастье +${5 * lv}, репутация района +${3 * lv}`], library: [`репутация района +${6 * lv}`, 'работники понемногу умнеют'], guard: [`безопасность +${10 * lv}`, 'каждый стражник ещё +3'], houses: [`мест в поместье +${2 * lv}`, `счастье +${4 * lv}`], park: [`счастье +${4 * lv}, репутация района +${5 * lv}`] }[t] || [];
+  const per = { market: [`репутация района +${2 * lv}`], quarry: ['можно копить камень на склад', `шум: репутация района −${2 * lv}`], workshop: ['можно копить инструменты на склад'], farm: [`еда в поместье дешевле на ${Math.min(45, 6 * lv)}% (все огороды вместе — до 45%)`], tavern: [`счастье +${2 * lv}, безопасность −${3 * lv}`], brothel: [`содержание ${15 + 10 * lv} мон./день; вид вечеров меняет доход и стресс`], baths: [`каждый день всем стресс −${3 * lv}, здоровье +${2 * lv}`, `счастье +${5 * lv}, репутация района +${3 * lv}`], library: [`репутация района +${6 * lv}`, 'работники понемногу умнеют'], guard: [`безопасность +${10 * lv}`, 'каждый стражник ещё +3'], houses: [`мест в поместье +${2 * lv}`, `счастье +${4 * lv}`], park: [`счастье +${4 * lv}, репутация района +${5 * lv}`] }[t] || [];
   out.push(...per);
   if (lv === 3) out.push('<b>Добротное:</b> крепкая утварь — выработка ещё ×1.05');
   if (lv === 4) out.push('<b>Аристократическое:</b> парадный фасад — репутация района +2');

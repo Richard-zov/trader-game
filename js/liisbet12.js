@@ -39,11 +39,11 @@ function makeLiisbet() {
 }
 function liisSpawnMarket(where) {
   const c = makeLiisbet(); c.liisSrc = where; S.market.unshift(c);
-  addLog(`Слух на рынке: ${where === 'big' ? 'на Большом рынке' : 'на рынке'} выставлен договор легендарной учёной — Лиисбет Белокосой. Такое бывает раз в жизни.`);
+  addLog(`Слух на бирже: ${where === 'big' ? 'на вашей бирже найма' : 'на городской бирже'} ищет место легендарная учёная — Лиисбет Белокосая. Такое бывает раз в жизни.`);
   return c;
 }
 (function () {
-  // --- рынок и Большой рынок: один «повод» в день у каждого, при обновлении она не пропадает ---
+  // --- биржа и своя биржа найма: один «повод» в день у каждого, при обновлении она не пропадает ---
   const oRoll = window.rollMarket;
   window.rollMarket = function () {
     const keep = (S.market || []).find(c => c.unique === 'liisbet');
@@ -75,12 +75,12 @@ function liisSpawnMarket(where) {
     return A;
   };
   // --- событие-предложение (ночью) ---
-  if (typeof XEV !== 'undefined') XEV.push({ id: 'liis_offer', w: 0, when: 'night', cond: () => false, title: 'Договор учёной',
-    text: () => { const c = S.liisOffer; return `К воротам приходит усталый поверенный разорившейся академии Каменной Короны. С ним — невысокая девушка в круглых золотых очках, с белой косой и стопкой исписанных тетрадей. «Это Лиисбет, — вздыхает он, — лучший ум академии. Долги её покровителей выставлены на продажу; я бы хотел отдать договор в добрые руки». Лиисбет робко улыбается: «Я умею считать звёзды, составлять травники и… я очень постараюсь не мешать!»${c ? ` <br><span class="muted small">Цена договора: ${fmt(Math.round(price(c)))} мон. Такое предложение — раз в жизни.</span>` : ''}`; },
+  if (typeof XEV !== 'undefined') XEV.push({ id: 'liis_offer', w: 0, when: 'night', cond: () => false, title: 'Учёная ищет место',
+    text: () => { const c = S.liisOffer; return `К воротам приходит усталый поверенный разорившейся академии Каменной Короны. С ним — невысокая девушка в круглых золотых очках, с белой косой и стопкой исписанных тетрадей. «Это Лиисбет, — вздыхает он, — лучший ум академии. Академия закрылась, и ей нужно место писаря и учёного при толковом хозяйстве. Я обещал помочь ей найти достойного нанимателя». Лиисбет робко улыбается: «Я умею считать звёзды, составлять травники и… я очень постараюсь не мешать!»${c ? ` <br><span class="muted small">Подъёмные: ${fmt(Math.round(price(c)))} мон. Такое предложение — раз в жизни.</span>` : ''}`; },
     ch: [
-      { l: () => `Выкупить договор (${S.liisOffer ? fmt(Math.round(price(S.liisOffer))) : '?'} мон.)`, ok: () => { const c = S.liisOffer; if (!c) return 'предложение ушло'; if (S.owned.length >= S.capacity) return 'нет мест'; return xCan(Math.round(price(c))); },
-        go: (x, e) => { const c = S.liisOffer; const cost = Math.round(price(c)); e.gold(-cost); S.liisOffer = null; c.status = 'home'; c.task = 'rest'; c.boughtFor = cost; S.owned.push(c); S.liisOwned = 1; e.note('Лиисбет теперь живёт в поместье'); return 'Лиисбет прижимает тетради к груди: «Спасибо! Я… я вас не подведу. Можно мне уголок у окна? Там хороший свет для записей».'; } },
-      { l: 'Пусть выставит договор на рынке', go: (x, e) => { const c = S.liisOffer; S.liisOffer = null; c.liisSrc = 'event'; S.market.unshift(c); e.note('Лиисбет — на рынке до конца дня'); return 'Поверенный кивает: «Тогда до вечера она будет на рынке». Лиисбет машет вам на прощание.'; } },
+      { l: () => `Нанять писарем и учёной (${S.liisOffer ? fmt(Math.round(price(S.liisOffer))) : '?'} мон. подъёмных)`, ok: () => { const c = S.liisOffer; if (!c) return 'предложение ушло'; if (S.owned.length >= S.capacity) return 'нет мест'; return xCan(Math.round(price(c))); },
+        go: (x, e) => { const c = S.liisOffer; const cost = Math.round(price(c)); e.gold(-cost); S.liisOffer = null; c.status = 'home'; c.task = 'rest'; c.boughtFor = cost; S.owned.push(c); if (typeof staffHire === 'function') staffHire(c, cost); S.liisOwned = 1; e.note('Лиисбет теперь работает у вас писарем и учёной'); return 'Лиисбет прижимает тетради к груди: «Спасибо! Я… я вас не подведу. Можно мне уголок у окна? Там хороший свет для записей».'; } },
+      { l: 'Пусть подаст объявление на бирже', go: (x, e) => { const c = S.liisOffer; S.liisOffer = null; c.liisSrc = 'event'; S.market.unshift(c); e.note('Лиисбет — на бирже найма до конца дня'); return 'Поверенный кивает: «Тогда до вечера она будет на бирже». Лиисбет машет вам на прощание.'; } },
       { l: 'Отказаться', go: (x, e) => { S.liisOffer = null; return 'Поверенный уводит Лиисбет дальше по тракту. Может быть, судьба ещё сведёт вас.'; } },
     ] });
   if (typeof xPick === 'function') {
@@ -102,46 +102,24 @@ function liisSpawnMarket(where) {
   // --- доброе отношение действует сильнее (лояльность +30%) ---
   const oLG = window.loyaltyGain;
   window.loyaltyGain = function (c, v) { if (c && c.fearCrit && v > 0) v *= 1.3; return oLG.call(this, c, v); };
-  // --- покупка: запоминаем, что она уже была вашей (больше не выпадет) ---
+  // --- найм: запоминаем, что она уже работала у вас (больше не выпадет) ---
   const oBuy = window.buy;
   window.buy = function (uid) { const r = oBuy.apply(this, arguments); try { if (S.owned.some(c => c.unique === 'liisbet')) S.liisOwned = 1; } catch (e) { } return r; };
   const oSave = window.save;
   if (oSave) window.save = function () { try { if (S && S.owned && S.owned.some(c => c.unique === 'liisbet')) S.liisOwned = 1; } catch (e) { } return oSave.apply(this, arguments); };
-  // --- наказание: только не интимные зоны; боится упрёков — стресс сильнее, но дисциплина без «гномьего» упрямства ---
-  const oPun = window.punish;
-  if (oPun) window.punish = function (uid, zone) {
+  // v16: наказаний и наследников больше нет — особые правила Лиисбет касаются только разговоров о работе
+  const oAct = window.act;
+  if (oAct) window.act = function (uid, k) {
     const c = findOwned(uid);
-    if (c && c.unique === 'liisbet') {
-      if (zone === 'rear') { toast('Лиисбет: только ладони, руки, плечи или спина.'); return; }
-      const d0 = c.discipline, s0 = c.stress;
-      const r = oPun.apply(this, arguments);
-      try { const dd = c.discipline - d0; if (dd > 0) c.discipline = clamp(c.discipline + Math.round(dd * 0.6)); const ds = c.stress - s0; if (ds > 0) c.stress = clamp(c.stress + Math.round(ds * 0.5)); } catch (e) { }
-      return r;
-    }
-    return oPun.apply(this, arguments);
-  };
-  const strip = h => typeof h === 'string' ? h.replace(/<button[^>]*data-hit="rear"[^>]*>[^<]*<\/button>/g, '').replace(/<div class="tz tz-hit tz-rear"[^>]*><\/div>/g, '') : h;
-  for (const fnN of ['punishPanelHtml', 'punishZonesHtml']) {
-    const o = window[fnN]; if (!o) continue;
-    window[fnN] = function (c) { const h = o.apply(this, arguments); return c && c.unique === 'liisbet' ? strip(h) : h; };
-  }
-  // --- наследники: похожи на отца или на «родственную» гномку f23, без копии внешности Лиисбет; ум передаётся ---
-  const oHeir = window.makeHeir2;
-  if (oHeir) window.makeHeir2 = function (mother, father) {
-    const L = mother && mother.unique === 'liisbet' ? mother : father && father.unique === 'liisbet' ? father : null;
-    if (!L) return oHeir.apply(this, arguments);
-    const p0 = L.preset; L.preset = 'f23';
-    let child;
-    try { child = oHeir.apply(this, arguments); } finally { L.preset = p0; }
-    try { if (child) { delete child.unique; child.liisKin = 1; if (child.g === 'm') child.name = child.name.replace('Белокосая', 'Белокосов'); child.pot.int = clamp(Math.max(child.pot.int, 70) + 10); child.stats.int = clamp(child.stats.int + 4, 3, 24); } } catch (e) { }
-    return child;
+    if (c && c.unique === 'liisbet' && k === 'scold') { const s0 = c.stress; const r = oAct.apply(this, arguments); try { const ds = c.stress - s0; if (ds > 0) c.stress = clamp(c.stress + Math.round(ds * 0.5)); } catch (e) { } return r; }
+    return oAct.apply(this, arguments);
   };
   // --- карточка: пометка ---
   const oCard = window.viewCard;
   if (oCard) window.viewCard = function () {
     let h = oCard.apply(this, arguments);
     try { const c = findAny(UI.cardUid); if (c && c.unique === 'liisbet' && typeof h === 'string' && h.includes('<div class="np-badges">'))
-      h = h.replace('<div class="np-badges">', `<div class="liis-note small">✦ <b>Уникальная.</b> Единственная в мире. Очень умна и изобретательна, но слаба телом. Боится упрёков: наказание даёт больше дисциплины, но и больше стресса; доброе отношение поднимает лояльность на 30% быстрее.</div><div class="np-badges">`); } catch (e) { }
+      h = h.replace('<div class="np-badges">', `<div class="liis-note small">✦ <b>Уникальная.</b> Единственная в мире. Очень умна и изобретательна, но слаба телом. Очень переживает из-за критики: разговор о работе даёт ей больше стресса; доброе отношение и похвала поднимают лояльность на 30% быстрее.</div><div class="np-badges">`); } catch (e) { }
     return h;
   };
 })();

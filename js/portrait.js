@@ -167,27 +167,18 @@ function headOverlays(ch, meta) {
 }
 
 // Какой арт показать: наряд всегда виден — если у персонажа нет арта именно этой вещи, берём ближайший похожий.
-// Чулки видны поверх белья или купального/кружевного комплекта (арт «_stock»).
 function artKeyFor(ch, p) {
   p = p || presetById(ch.preset);
   const arts = (typeof OUTFIT_ART !== 'undefined' && OUTFIT_ART[p.id]) || [];
-  // беременность: животик по стадиям (1–3 дни, 4–6, 7–9) — наряд снимается, живот открыт
-  const st = pregStage(ch);
-  if (st && arts.includes('preg' + st)) return p.id + '_preg' + st;
-  const leg = (ch.acc || []).find(a => ACCESSORIES[a.id] && ACCESSORIES[a.id].slot === 'legs');
   const o = ch.outfit;
-  if (leg && (!o || o === 'lace' || o === 'swim')) {
-    const la = ACCESSORIES[leg.id].art;
-    if (la && la !== 'stock' && arts.includes(la)) return p.id + '_' + la;
-    if (arts.includes('stock')) return p.id + '_stock';
-  }
   if (!o) return p.id;
   if (arts.includes(o)) return p.id + '_' + o;
   for (const alt of (OUTFIT_NEAR[o] || [])) if (arts.includes(alt)) return p.id + '_' + alt;
   return p.id;
 }
-// Стадия беременности 1..3 по дням (беременность длится 9 дней)
+// оставлено для совместимости со старыми модулями
 function pregStage(ch) {
+  return 0; // v16: механика удалена
   if (!ch || !ch.preg) return 0;
   const day = (typeof S !== 'undefined' && S && S.day) || 0;
   const start = ch.preg.start != null ? ch.preg.start : (ch.preg.due - 9);
@@ -212,8 +203,6 @@ function renderPortrait(ch, size, extraClass) {
       artImg = `<img class="portrait-art art-${size}" src="${art}" alt="" style="--fh:${fh}" ${onl}>`;
     }
   }
-  // нет арта животика — значок «ждёт малыша» с номером стадии
-  if (size === 'lg' && ch.preg && !key.includes('_preg')) artImg += `<div class="preg-badge" title="Ждёт малыша">${(typeof Anim !== 'undefined' && Anim.EMO_SVG && Anim.EMO_SVG.preg) || '🤰'}<b>${pregStage(ch)}/3</b></div>`;
   const bgHue = { human: '#e9d3a8', elf: '#d6e0c0', beast: '#ecd0a6', dwarf: '#e6c8a8' }[p.race];
   const bg = bgFor(ch);
   return `<div class="portrait portrait-${size} expr-neutral ${extraClass || ''}" data-preset="${p.id}" style="--pbg:${bgHue};--fh:${fh}">

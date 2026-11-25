@@ -1,6 +1,6 @@
 // ===== Живые портреты: деформация полноростового арта на canvas, 60 кадров =====
 // Голова, руки (маятник от плеча), ноги (перенос веса), хвост (поворот от корня), дыхание, моргание,
-// смена выражения лица (атласы assets/expr), реакции на прикосновения. Если кадр тяжёлый — сами снижаем частоту.
+// смена выражения лица (атласы assets/expr), реакции на похвалу и разговор. Если кадр тяжёлый — сами снижаем частоту.
 'use strict';
 
 const Anim = (() => {
@@ -32,7 +32,7 @@ const Anim = (() => {
     preg: '<svg viewBox="0 0 28 28"><circle cx="14" cy="14" r="13" fill="#fbe3ea" stroke="#b05a78" stroke-width="1.6"/><ellipse cx="14" cy="17" rx="6.5" ry="5" fill="#fff" stroke="#b05a78" stroke-width="1.4"/><circle cx="14" cy="10" r="3.6" fill="#f6d2b0" stroke="#b05a78" stroke-width="1.4"/></svg>',
     heat: '<svg viewBox="0 0 28 28"><path d="M14 25 C6 20 4 15 6 11 C8 8 11 9 12 11 C11 7 13 4 16 3 C15 7 19 9 20 12 C22 16 20 22 14 25 Z" fill="#ff8fb0" stroke="#a03060" stroke-width="1.6"/><path d="M14 21 C11 19 10 17 11 15 C12 14 13 15 14 16 C15 14 17 15 17 17 C17 19 16 20 14 21 Z" fill="#fff0f5"/></svg>',
   };
-  const EMO_TITLE = { sweat: 'Устал(а)', zzz: 'Клонит в сон', hearts: 'Счастлив(а)', anger: 'Раздражён(а)', preg: 'Ждёт малыша', heat: 'Течка: щёки горят, хочется внимания' };
+  const EMO_TITLE = { sweat: 'Устал(а)', zzz: 'Клонит в сон', hearts: 'Счастлив(а)', anger: 'Раздражён(а)', };
   function decorate(box, meta) {
     const cp = box.closest('.card-portrait'); if (!cp) return;
     const old = box.querySelector('.emotes'); if (old) old.remove();
@@ -252,7 +252,7 @@ const Anim = (() => {
       }
     }
     c.acts = c.acts.filter(a => actK(a, now) < 1);
-    // хвост: ленивое покачивание, быстрее у счастливых и в течке
+    // хвост: ленивое покачивание, быстрее у счастливых
     const tailRate = c.md === 'happy' ? 1.3 : c.md === 'heat' ? 1.6 : c.md === 'tired' ? 0.5 : c.md === 'sad' ? 0.4 : 0.8;
     tailT += Math.sin(t * tailRate * 2.1 + c.ph) * 0.45 + Math.sin(t * 5.3) * 0.08;
     c.tilt.t = tilt; c.nod.t = nod; c.armL.t = armL; c.armR.t = armR; c.hip.t = hip; c.shrug.t = shrug; c.lean.t = lean; c.squish.t = squish; c.tailA.t = tailT;
@@ -451,32 +451,7 @@ const Anim = (() => {
   const ZONE_ACT = { head: 'headpat', ears: 'ears', tail: 'tail', cheek: 'cheek', shoulder: 'shoulder', back: 'back', hand: 'hand', hair: 'hair', neck: 'neck', collar: 'collar', arm: 'arm', fingers: 'hand', waist: 'giggle', belly: 'belly', thigh: 'leg', knee: 'knee', calf: 'leg', foot: 'foot' };
   const HAND_MOTION = { head: 'stroke', hair: 'comb', ears: 'rub', tail: 'stroke', cheek: 'pinch', shoulder: 'knead', back: 'pat', hand: 'hold', neck: 'trace', collar: 'trace', arm: 'slide', fingers: 'knead', waist: 'tickle', belly: 'circle', thigh: 'slide', knee: 'tickle', calf: 'knead', foot: 'tickle' };
   const CENTER_Z = { head: 1, back: 1, neck: 1, belly: 1 };
-  function touch(uid, zone, strength, liked, side) {
-    const cp = document.querySelector(`.card-portrait[data-uid="${uid}"]`); if (!cp) return;
-    const box = cp.querySelector('.art-box'); if (!box) return;
-    const meta = ART_META[box.dataset.key]; if (!meta) return;
-    const zg = zoneGeom(box.dataset.key, box.dataset.race) || {};
-    const sd = side || (Math.random() < 0.5 ? -1 : 1);
-    const zk = zone === 'back' ? 'head' : CENTER_Z[zone] ? zone : zone + (sd < 0 ? 'L' : 'R');
-    let g = zg[zk] || zg[zone + 'L'] || zg.head;
-    if (zone === 'back') g = { x: zg.shoulderL.x, y: zg.shoulderL.y + 3, w: zg.shoulderR.x + zg.shoulderR.w - zg.shoulderL.x, h: zg.shoulderL.h };
-    const hx = g.x + g.w / 2, hy = g.y + g.h / 2, hw = meta.hw * 100;
-    const fx = document.createElement('div'); fx.className = 'pet-fx';
-    const dur = liked ? 1.5 + strength * 1.4 : 1.0;
-    const blush = /^(cheek|head|ears|hand|tail|hair|neck|collar|fingers|waist|belly|thigh|knee|foot)$/.test(zone) && liked;
-    const headHf = meta.hw * 1.25 * meta.w / meta.h * 100;
-    const ey = meta.eyes ? (meta.eyes[0][1] + meta.eyes[1][1]) / 2 * 100 : meta.top * 100 + headHf * 0.5;
-    fx.innerHTML = `<div class="pet-hand hm-${HAND_MOTION[zone] || 'stroke'}${sd > 0 ? ' flip' : ''}" style="left:${hx}%;top:${hy}%;width:${hw * (zone === 'hand' || zone === 'cheek' || zone === 'fingers' || zone === 'neck' || zone === 'collar' ? 0.7 : 0.9)}%;--d:${dur}s">${HAND}</div>
-      <div class="pet-ripple" style="left:${hx}%;top:${hy}%;width:${hw * 0.9}%"></div>
-      ${blush ? `<div class="pet-blush" style="left:${meta.cx * 100 - hw * 0.19}%;top:${ey + headHf * 0.14}%;width:${hw * 0.2}%"></div>
-      <div class="pet-blush" style="left:${meta.cx * 100 + hw * 0.19}%;top:${ey + headHf * 0.14}%;width:${hw * 0.2}%"></div>` : ''}
-      ${liked ? Array.from({ length: 2 + Math.round(strength * 4) }, (_, i) => `<div class="pet-heart" style="left:${hx + (Math.random() - 0.5) * hw * 1.2}%;top:${hy}%;--dl:${(0.25 + i * 0.22).toFixed(2)}s;--sx:${((Math.random() - 0.5) * 40).toFixed(0)}px;width:${(hw * (0.2 + Math.random() * 0.14)).toFixed(1)}%">${HEART}</div>`).join('') : ''}`;
-    box.appendChild(fx);
-    setTimeout(() => fx.remove(), (dur + 1.8) * 1000);
-    if (cur && cur.box === box) play(liked ? (ZONE_ACT[zone] || 'headpat') : 'flinch', { side: sd, k: liked ? 0.6 + 0.4 * strength : 1, dur: liked ? dur : 0.9 });
-    const p = cp.querySelector('.portrait'); p.classList.add(liked ? 'petted' : 'flinch');
-    setTimeout(() => { p.classList.remove('petted', 'flinch'); }, dur * 1000 + 400);
-  }
+  function touch() { } // v16: прикосновений больше нет
   function pet(uid, strength, liked) { touch(uid, 'head', strength, liked); }
   function setMood(md) { if (cur) { cur.md = md; cur.droop = md === 'tired' ? 1 : md === 'sad' ? 0.6 : 0; } }
   function redecorate() { if (cur) decorate(cur.box, cur.meta); }

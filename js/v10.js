@@ -6,15 +6,15 @@
 const GOAL_POOL = [
   ['praise', 'Похвалить кого-нибудь', 1, 60, 0], ['talk', 'Поговорить с персонажем', 2, 50, 0], ['self', 'Поработать самому во Владениях', 1, 80, 0],
   ['assign', 'Поставить работника в постройку', 1, 60, 0], ['build', 'Построить или улучшить здание', 1, 150, 1], ['bid', 'Сделать ставку на аукционе', 1, 70, 0],
-  ['touch', 'Приласкать (по-доброму)', 2, 40, 0], ['gift', 'Сделать подарок', 1, 70, 0], ['order', 'Отправить кого-то на заказ в таверне', 1, 90, 1],
+  ['bonus', 'Выдать премию или выходной', 1, 60, 0], ['gift', 'Сделать подарок', 1, 70, 0], ['order', 'Отправить кого-то на заказ в таверне', 1, 90, 1],
 ];
 const MILESTONES = [
   ['b1', 'Первая постройка', () => Object.values(S.est.b).some(b => b.lv), 300, 2],
   ['w3', 'Три работника во Владениях', () => S.owned.filter(c => c.bld).length >= 3, 400, 2],
   ['b3', 'Три разных постройки', () => Object.values(S.est.b).filter(b => b.lv).length >= 3, 600, 3],
   ['lv3', 'Здание 3-го уровня', () => Object.values(S.est.b).some(b => b.lv >= 3), 800, 3],
-  ['rD', 'Ранг гильдии D', () => S.rep >= 15, 500, 0], ['own6', 'Шесть жителей в поместье', () => S.owned.length >= 6, 500, 2],
-  ['auc', 'Выиграть лот на аукционе', () => S.auc.won >= 1, 300, 2], ['rC', 'Ранг гильдии C', () => S.rep >= 30, 1200, 0],
+  ['rD', 'Ранг гильдии D', () => S.rep >= 15, 500, 0], ['own6', 'Шесть работников в хозяйстве', () => S.owned.length >= 6, 500, 2],
+  ['auc', 'Выиграть торги на аукционе', () => S.auc.won >= 1, 300, 2], ['rC', 'Ранг гильдии C', () => S.rep >= 30, 1200, 0],
   ['lv5', 'Здание 5-го уровня', () => Object.values(S.est.b).some(b => b.lv >= 5), 2500, 5], ['g20', '20 000 монет в кассе', () => S.gold >= 20000, 1500, 5],
 ];
 function goalsRoll() {
@@ -63,7 +63,7 @@ function aucRoll() {
   for (let i = 0; i < n; i++) {
     const t = i === 0 ? 'slave' : pick(['gear', 'gear', 'item', 'rare']);
     let lot = { id: 'L' + (S.nextId++), t };
-    if (t === 'slave') { const c = makeCharacter({ rarity: R() < 0.3 ? 3 : 2 }); lot.ch = c; lot.name = fn1(c) + ` (${c.race ? (RACES[c.race] ? RACES[c.race].name : c.race) : ''})`; lot.val = Math.round(corePrice(c)); }
+    if (t === 'slave') { const c = makeCharacter({ rarity: R() < 0.3 ? 3 : 2 }); lot.ch = c; lot.name = 'Договор с мастером: ' + fn1(c) + ` (${c.race ? (RACES[c.race] ? RACES[c.race].name : c.race) : ''})`; lot.val = Math.round(corePrice(c)); }
     else if (t === 'gear') { const isO = R() < 0.4, base = pick(Object.keys(isO ? OUTFITS : ACCESSORIES)), q = R() < 0.4 ? 2 : 1, it = makeGear(isO ? 'outfit' : 'acc', base, Math.min(q, GEAR_Q.length - 1)); lot.it = it; lot.name = gearDef(it).name + ' · ' + GEAR_Q[it.q].name; lot.val = Math.round(gearVal(it) * 1.1); }
     else if (t === 'item') { const id = pick(Object.keys(ITEMS)), q = rint(3, 6); lot.item = id; lot.q = q; lot.name = `${ITEMS[id].name} ×${q}`; lot.val = ITEMS[id].price * q; }
     else { lot.item = 'amulet'; lot.q = 2; lot.name = 'Редкость: 2 амулета удачи с юга'; lot.val = 300; }
@@ -94,7 +94,7 @@ function aucRender() {
 function aucBid() {
   const A = AUCS, amt = A.lead ? A.cur + aucStep() : A.cur;
   if (amt > S.gold) return toast('Столько монет у вас нет.');
-  if (A.lot.t === 'slave' && S.owned.length >= S.capacity) return toast('В поместье нет места для нового жителя.');
+  if (A.lot.t === 'slave' && S.owned.length >= S.capacity) return toast('В хозяйстве нет места для нового работника.');
   A.cur = amt; A.lead = 'you'; A.log.push(`Вы: ${fmt(amt)}.`); goalBump('bid');
   // ответы соперников
   const alive = A.bs.filter(b => !b.out && b.max >= A.cur + aucStep());
@@ -114,9 +114,9 @@ function aucPass() { const A = AUCS; A.lot.done = true; A.lot.who = A.lead || '�
 function aucWin(price, buyout) {
   const A = AUCS, lot = A.lot;
   if (price > S.gold) return toast('Столько монет у вас нет.');
-  if (lot.t === 'slave' && S.owned.length >= S.capacity) return toast('В поместье нет места для нового жителя.');
+  if (lot.t === 'slave' && S.owned.length >= S.capacity) return toast('В хозяйстве нет места для нового работника.');
   S.gold -= price; lot.done = true; lot.who = 'вы'; S.auc.won++;
-  if (lot.ch) { const c = lot.ch; c.status = 'home'; c.boughtFor = price; c.task = 'rest'; S.owned.push(c); if (typeof migrateChar === 'function') try { migrateChar(c); } catch (e) { } }
+  if (lot.ch) { const c = lot.ch; c.status = 'home'; c.boughtFor = price; c.task = 'rest'; S.owned.push(c); if (typeof migrateChar === 'function') try { migrateChar(c); } catch (e) { } if (typeof staffHire === 'function') staffHire(c, price); }
   if (lot.it) S.stash.push(lot.it);
   if (lot.item) S.inv[lot.item] = (S.inv[lot.item] || 0) + lot.q;
   sfx('coin'); addLog(`Аукцион: вы ${buyout ? 'выкупили' : 'выиграли'} «${lot.name}» за ${fmt(price)} мон.`);
@@ -125,7 +125,7 @@ function aucWin(price, buyout) {
 function aucSellList(kind, ref) {
   const A = aucRoll(); if (A.sell.length >= 3) return toast('Не больше трёх своих лотов за раз.');
   let lot = null;
-  if (kind === 'slave') { const c = findOwned(ref); if (!c || c.status !== 'home' || c.preg) return toast('Сейчас выставить нельзя.'); if (A.sell.some(s => s.uid === ref)) return; lot = { k: 'slave', uid: ref, name: fn1(c), val: sellPrice(c) }; }
+  if (kind === 'slave') return toast('Людей не продают: чтобы помочь работнику сменить место, используйте «Рекомендовать» в его карточке.');
   if (kind === 'gear') { const it = S.stash.find(x => x.iid === ref); if (!it) return; S.stash = S.stash.filter(x => x !== it); lot = { k: 'gear', it, name: gearDef(it).name, val: Math.round(gearVal(it) * 0.6) }; }
   if (kind === 'item') { if (!(S.inv[ref] > 0)) return; S.inv[ref]--; lot = { k: 'item', item: ref, name: ITEMS[ref].name, val: Math.round(ITEMS[ref].price * 0.6) }; }
   if (!lot) return;
@@ -135,8 +135,8 @@ function aucResolveSells() {
   const A = estOf() && S.auc, out = []; if (!A.sell.length) return out;
   const keep = [];
   for (const l of A.sell) {
-    const c = l.k === 'slave' ? findOwned(l.uid) : null;
-    if (l.k === 'slave' && (!c || c.status !== 'home')) { if (c) keep.push(l); continue; }
+    const c = null;
+    if (l.k === 'slave') continue; // старые сохранения: таких лотов больше нет
     const price = Math.round(l.val * (0.75 + R() * 0.75)), fee = Math.round(Math.max(price, l.val) * aucFee());
     if (price < l.reserve) { const lf = Math.round(l.val * 0.02); S.gold -= lf; out.push(`Аукцион: «${l.name}» не продан (лучшая ставка ${fmt(price)} < резерва ${fmt(l.reserve)}). Сбор за лот −${lf}.`); if (l.k === 'gear') S.stash.push(l.it); if (l.k === 'item') S.inv[l.item] = (S.inv[l.item] || 0) + 1; continue; }
     S.gold += price - fee; S.totalEarned += price - fee;
@@ -147,13 +147,13 @@ function aucResolveSells() {
 }
 function viewAuction() {
   const A = aucRoll();
-  const mine = homeChars().filter(c => !c.preg && !A.sell.some(s => s.uid === c.uid));
+  const mine = [];
   const inv = Object.entries(S.inv).filter(([k, v]) => v > 0 && ITEMS[k]);
-  return `<div class="screen-head"><h1>Аукцион «Молоток и мёд»</h1><div class="sub">Новые лоты раз в два дня (следующие — день ${A.next}). Торгуйтесь против купцов с характером.</div></div>
+  return `<div class="screen-head"><h1>Аукцион «Молоток и мёд»</h1><div class="sub">Новые лоты раз в два дня (следующие — день ${A.next}). Торгуйтесь против купцов с характером. Договор с мастером — это право нанять редкого специалиста: ставка идёт в его подъёмные.</div></div>
   <div class="panel parchment"><div class="panel-title">Лоты</div>
   ${A.lots.map(l => `<div class="auc-lot ${l.done ? 'done' : ''}"><div><b>${esc(l.name)}</b><div class="small muted">оценка ≈${fmt(l.val)} · старт ${fmt(l.reserve)} · выкуп ${fmt(l.buyout)}</div></div>${l.done ? `<small>ушло: ${esc(l.who)}</small>` : `<button class="btn btn-primary small" data-auc="${l.id}">Торговаться</button>`}</div>`).join('')}
   </div>
-  <div class="panel parchment"><div class="panel-title">Продать через аукцион</div>
+  <div class="panel parchment"><div class="panel-title">Продать вещи через аукцион</div>
   <div class="small muted">Цена может выйти выше рынка (до +50%), но есть резерв 90% оценки и комиссия ${Math.round(aucFee() * 100)}%. Не продано — сбор 2% и вещь возвращается. Итог в конце дня.</div>
   ${A.sell.length ? `<div class="small" style="margin:6px 0">Выставлено: ${A.sell.map(s => `<b>${esc(s.name)}</b> (≈${fmt(s.val)})`).join(', ')}</div>` : ''}
   <div class="auc-sell">${mine.map(c => `<button class="chip" data-aucsell="slave:${c.uid}">${esc(fn1(c))} ≈${fmt(sellPrice(c))}</button>`).join('')}
@@ -218,6 +218,6 @@ function viewAuction() {
   }, true);
   try {
     HELP.push(['estate', 'Владения', () => `<p>Карта поместья: 7 участков. Постройте здание и улучшайте до 5-го уровня — оно растёт и меняет вид. Каждое здание даёт доход от работников, но требует содержания.</p><p>Работникам нужны свои навыки (например, каменоломне — Сила и Выносливость), а черты дают +25% (Трудолюбие, Выносливость, Обаяние...). Ниже требования — выработка ×0.6. В окне здания строка «Почему так» раскладывает доход по множителям.</p><p>Работник постройки весь день там и не берёт обычные дела. «Поработать самому» — раз в день, небольшой доход. Спрос на каждую постройку меняется ежедневно. Огород удешевляет еду, купальни лечат всех, библиотека учит, таверна иногда даёт репутацию. Раз в неделю гильдия берёт сбор.</p>`]);
-    HELP.push(['auction', 'Аукцион и цели', () => `<p>Аукцион: раз в два дня новые лоты (житель, наряды, припасы, редкости). Соперники с характером: скряга сдаётся рано, азартная вдова перебивает. «Ставка» поднимает цену, «Ждать» — ударить молотком, «Выкуп» — забрать сразу.</p><p>Можно выставить своё: цена бывает выше рынка, но есть резерв и комиссия 8%. Итог в конце дня.</p><p>Цели: три задания на день с наградой, бонус за все три, вехи с крупными наградами и полоса до следующего ранга гильдии.</p>`]);
+    HELP.push(['auction', 'Аукцион и цели', () => `<p>Аукцион: раз в два дня новые лоты (договор найма с редким мастером, наряды, припасы, редкости). За договор торгуются наниматели, а победитель платит мастеру подъёмные. Соперники с характером: скряга сдаётся рано, азартная вдова перебивает. «Ставка» поднимает цену, «Ждать» — ударить молотком, «Выкуп» — забрать сразу.</p><p>Можно выставить свои вещи: цена бывает выше рынка, но есть резерв и комиссия 8%. Итог в конце дня. Людей на аукционе не продают.</p><p>Цели: три задания на день с наградой, бонус за все три, вехи с крупными наградами и полоса до следующего ранга гильдии.</p>`]);
   } catch (e) { }
 })();

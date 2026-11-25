@@ -200,7 +200,7 @@ const VOICE12 = (() => {
     let s = fem ? 'A soft, warm and gentle adult woman\'s voice' : 'A calm, warm and kind adult man\'s voice';
     if (c.race === 'elf') s += ', light and melodic'; else if (c.race === 'dwarf') s += ', slightly husky but friendly';
     if (c.voiceHint) s += ', ' + c.voiceHint;
-    return s + '. Speaks natural, native Russian at an easy conversational pace, intimate and close to the microphone, clear diction, no theatrics, no accent.';
+    return s + '. Speaks natural, native Russian at an easy conversational pace, warm, friendly and close to the microphone, clear diction, no theatrics, no accent.';
   }
   async function design(c) {
     const j = await vfetch(VAPI, { method: 'POST', body: JSON.stringify({ store: true, voice: { model: TTS_FLASH, type: 'prompted', display_name: ('Медовый Лог — ' + (c.name || 'персонаж')).slice(0, 60), gender: c.g === 'm' ? 'male' : 'female', language_code: 'ru-RU', prompted: { input: designPrompt(c) } } }) });
